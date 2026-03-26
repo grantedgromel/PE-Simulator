@@ -6,6 +6,7 @@ import { DealSourcing } from '../phases/DealSourcing'
 import { DiligenceView } from '../phases/DiligenceView'
 import { StructuringView } from '../phases/StructuringView'
 import { OperationsView } from '../phases/OperationsView'
+import { ExitsView } from '../phases/ExitsView'
 import { EndOfQuarter } from '../phases/EndOfQuarter'
 
 export function GameScreen() {
@@ -21,17 +22,10 @@ export function GameScreen() {
         return <StructuringView />
       case 'Operations':
         return <OperationsView />
+      case 'Exits':
+        return <ExitsView />
       case 'EndOfQuarter':
         return <EndOfQuarter />
-      case 'Exits':
-        return (
-          <div className="flex items-center justify-center h-full text-terminal-muted">
-            <div className="text-center">
-              <p className="font-mono text-lg">Exits</p>
-              <p className="text-xs mt-1">Coming in Phase 3</p>
-            </div>
-          </div>
-        )
       default:
         return null
     }

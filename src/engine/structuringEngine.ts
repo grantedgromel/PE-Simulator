@@ -236,6 +236,12 @@ export function createPortfolioCompanyFromDeal(
     mezzanineDebtRate: structure.mezzanineRate,
     managementRolloverPct: structure.managementRolloverPct,
     costCutCount: 0,
+    addOnCount: 0,
+    addOnRevenue: 0,
+    managementQuality: deal.managementQuality * 10, // scale 1-10 → 10-100
     covenantBreached: false,
+    covenantChoicePending: false,
+    dividendRecapTotal: 0,
+    exitInProgress: null,
   }
 }

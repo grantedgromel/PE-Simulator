@@ -4,7 +4,7 @@ import type { Deal } from './deal'
 import type { TeamMember } from './team'
 import type { GameEvent } from './events'
 import type { LPBase } from './lp'
-import type { PendingEffect } from './effects'
+import type { PendingEffect, MarketConditions, ExitResult } from './effects'
 
 export type Sector =
   | 'Healthcare'
@@ -23,7 +23,7 @@ export type GamePhase =
   | 'Exits'
   | 'EndOfQuarter'
 
-export type Screen = 'menu' | 'game'
+export type Screen = 'menu' | 'game' | 'fundComplete'
 
 export type FundCycle = 1 | 2 | 3
 
@@ -46,6 +46,10 @@ export interface GameState {
   eventLog: GameEvent[]
   historicalIRRByQuarter: number[]
   pendingEffects: PendingEffect[]
+  marketConditions: MarketConditions
+  exitResults: ExitResult[]
+  fundEndQuarter: number
+  investmentPeriodEndQuarter: number
   personalCarryEstimate: number
   totalQuartersElapsed: number
 }

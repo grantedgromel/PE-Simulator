@@ -63,6 +63,12 @@ export interface PortfolioCompany {
   mezzanineDebtRate: number
   managementRolloverPct: number
   costCutCount: number
+  addOnCount: number
+  addOnRevenue: number
+  managementQuality: number
   covenantBreached: boolean
+  covenantChoicePending: boolean
+  dividendRecapTotal: number
+  exitInProgress: import('../types/effects').ExitInProgress | null
   assignedOperatingPartnerId?: string
 }

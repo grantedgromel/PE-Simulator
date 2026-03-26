@@ -46,6 +46,8 @@ export function BottomBar() {
     buttonLabel = 'DONE STRUCTURING'
   } else if (currentPhase === 'Operations') {
     buttonLabel = 'END OPERATIONS'
+  } else if (currentPhase === 'Exits') {
+    buttonLabel = 'DONE WITH EXITS'
   }
 
   return (

@@ -13,27 +13,52 @@ const ACTIONS: { id: ValueCreationAction; label: string; description: string; co
   {
     id: 'RevenueEnhancement',
     label: 'Raise Prices',
-    description: 'Revenue +5-10% immediately. Customer satisfaction bleeds over 2-4 quarters.',
+    description: 'Revenue +5-10% immediately. Satisfaction bleeds over 2-4 quarters.',
     color: 'text-terminal-blue',
   },
   {
     id: 'OrganicInvestment',
     label: 'Invest in Growth',
-    description: 'EBITDA dips short-term. Growth rate +2-5pp in 3-5 quarters. Morale boost.',
+    description: 'EBITDA dips short-term. Growth boost in 3-5 quarters.',
     color: 'text-terminal-green',
+  },
+  {
+    id: 'AddOnAcquisition',
+    label: 'Add-On',
+    description: 'Bolt-on acquisition. Revenue jumps, integration risk.',
+    color: 'text-terminal-green',
+  },
+  {
+    id: 'DividendRecap',
+    label: 'Div Recap',
+    description: 'Extract cash via debt. Improves DPI, increases leverage.',
+    color: 'text-terminal-amber',
+  },
+  {
+    id: 'ManagementUpgrade',
+    label: 'New Mgmt',
+    description: 'Replace CEO. Transition disruption, then improvement.',
+    color: 'text-terminal-blue',
+  },
+  {
+    id: 'ConsultantEngagement',
+    label: 'Consultant',
+    description: '$1-3M cost. 40% helpful, 30% obvious, 30% waste.',
+    color: 'text-terminal-muted',
   },
   {
     id: 'DoNothing',
     label: 'Do Nothing',
-    description: 'Company drifts on baseline momentum. No action, no risk.',
+    description: 'Drift on baseline momentum.',
     color: 'text-terminal-muted',
   },
 ]
 
 export function OperationsView() {
   const { portfolioCompanies } = useGameStore()
+  const activeCompanies = portfolioCompanies.filter((c) => c.status === 'Active')
 
-  if (portfolioCompanies.length === 0) {
+  if (activeCompanies.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-terminal-muted">
         <p className="font-mono">No portfolio companies to manage.</p>
@@ -53,7 +78,7 @@ export function OperationsView() {
       </div>
 
       <div className="space-y-4">
-        {portfolioCompanies.map((company) => (
+        {activeCompanies.map((company) => (
           <CompanyOperationsCard key={company.id} company={company} />
         ))}
       </div>
@@ -66,20 +91,38 @@ function CompanyOperationsCard({
 }: {
   company: ReturnType<typeof useGameStore.getState>['portfolioCompanies'][0]
 }) {
-  const { executeCompanyAction, totalQuartersElapsed } = useGameStore()
+  const {
+    executeCompanyAction, totalQuartersElapsed,
+    generateAddOns, executeAddOnAcquisition, executeDividendRecapAction,
+    resolveCovenantChoice, addOnTargets,
+  } = useGameStore()
   const [selectedAction, setSelectedAction] = useState<ValueCreationAction | null>(null)
+  const [showAddOns, setShowAddOns] = useState(false)
+  const [recapAmount, setRecapAmount] = useState(0)
+  const [showRecap, setShowRecap] = useState(false)
 
-  // Check if action already taken this quarter
   const actionTakenThisQuarter = company.actionsTaken.some(
     (a) => a.quarter === totalQuartersElapsed,
   )
 
   const handleExecute = () => {
-    if (selectedAction && !actionTakenThisQuarter) {
-      executeCompanyAction(company.id, selectedAction)
-      setSelectedAction(null)
+    if (!selectedAction || actionTakenThisQuarter) return
+
+    if (selectedAction === 'AddOnAcquisition') {
+      generateAddOns(company.id)
+      setShowAddOns(true)
+      return
     }
+    if (selectedAction === 'DividendRecap') {
+      setShowRecap(true)
+      return
+    }
+
+    executeCompanyAction(company.id, selectedAction)
+    setSelectedAction(null)
   }
+
+  const maxRecap = Math.max(0, (6.0 - company.leverageRatio) * company.ebitda)
 
   const moraleColor =
     company.morale >= 60 ? 'text-terminal-green' : company.morale >= 40 ? 'text-terminal-amber' : 'text-terminal-red'
@@ -122,17 +165,21 @@ function CompanyOperationsCard({
         <HealthBar label="Cust. Satisfaction" value={company.customerSatisfaction} color={satColor} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-4 gap-3 mb-3">
         <CompactMetric label="Interest Coverage" value={`${company.interestCoverage}x`} warn={company.interestCoverage < 2} />
         <CompactMetric label="Employees" value={String(company.employeeCount)} />
         <CompactMetric label="Growth Rate" value={formatPercent(company.revenueGrowthRate)} />
         <CompactMetric label="Valuation" value={formatCurrency(company.currentImpliedValuation)} />
+        <CompactMetric label="Fragility" value={`${company.fragility}/100`} warn={company.fragility > 50} />
+        <CompactMetric label="Add-Ons" value={String(company.addOnCount)} />
+        <CompactMetric label="Mgmt Quality" value={`${company.managementQuality}/100`} />
+        <CompactMetric label="Div Recaps" value={formatCurrency(company.dividendRecapTotal)} />
       </div>
 
       {/* Action Selection */}
       {!actionTakenThisQuarter && (
         <div className="border-t border-terminal-border pt-3">
-          <div className="grid grid-cols-4 gap-2 mb-2">
+          <div className="grid grid-cols-4 lg:grid-cols-8 gap-1 mb-2">
             {ACTIONS.map((action) => {
               const isRepeatCut = action.id === 'CostCutting' && company.costCutCount > 0
               return (
@@ -156,13 +203,71 @@ function CompanyOperationsCard({
               )
             })}
           </div>
-          {selectedAction && (
+          {selectedAction && !showAddOns && !showRecap && (
             <button
               onClick={handleExecute}
               className="w-full py-2 bg-terminal-green/20 border border-terminal-green text-terminal-green font-mono text-xs rounded hover:bg-terminal-green/30 transition-colors"
             >
               EXECUTE: {ACTIONS.find((a) => a.id === selectedAction)?.label}
             </button>
+          )}
+
+          {/* Add-On Target Picker */}
+          {showAddOns && addOnTargets.length > 0 && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-terminal-muted">Select add-on target:</p>
+              {addOnTargets.map((t) => (
+                <div key={t.id} className="flex justify-between items-center p-2 bg-terminal-bg rounded border border-terminal-border text-xs">
+                  <div>
+                    <span className="text-terminal-white">{t.name}</span>
+                    <span className="text-terminal-muted ml-2">Rev: {formatCurrency(t.revenue)} | EBITDA: {formatCurrency(t.ebitda)} | {formatMultiple(t.askingMultiple)}</span>
+                  </div>
+                  <button
+                    onClick={() => { executeAddOnAcquisition(company.id, t); setShowAddOns(false); setSelectedAction(null) }}
+                    className="px-2 py-1 bg-terminal-green/15 border border-terminal-green text-terminal-green font-mono text-[10px] rounded"
+                  >
+                    ACQUIRE
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => { setShowAddOns(false); setSelectedAction(null) }} className="text-xs text-terminal-muted hover:text-terminal-white">Cancel</button>
+            </div>
+          )}
+
+          {/* Dividend Recap Slider */}
+          {showRecap && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-terminal-muted">Recap amount (max: {formatCurrency(maxRecap)}):</p>
+              <input
+                type="range" min={0} max={maxRecap} step={0.5} value={recapAmount}
+                onChange={(e) => setRecapAmount(parseFloat(e.target.value))}
+                className="w-full"
+              />
+              <p className="text-xs font-mono text-terminal-white">{formatCurrency(recapAmount)}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { executeDividendRecapAction(company.id, recapAmount); setShowRecap(false); setSelectedAction(null) }}
+                  disabled={recapAmount <= 0}
+                  className="flex-1 py-1 bg-terminal-green/15 border border-terminal-green text-terminal-green font-mono text-xs rounded disabled:opacity-30"
+                >
+                  EXECUTE RECAP
+                </button>
+                <button onClick={() => { setShowRecap(false); setSelectedAction(null) }} className="text-xs text-terminal-muted">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {/* Covenant Breach Actions */}
+          {company.covenantChoicePending && (
+            <div className="mt-2 p-2 bg-terminal-red/10 border border-terminal-red/30 rounded space-y-1">
+              <p className="text-xs text-terminal-red font-mono">COVENANT BREACH — Choose action:</p>
+              <div className="grid grid-cols-2 gap-1">
+                <button onClick={() => resolveCovenantChoice({ companyId: company.id, type: 'negotiate_waiver' })} className="px-2 py-1 text-[10px] border border-terminal-border rounded text-terminal-white hover:border-terminal-muted">Negotiate Waiver ($0.75M)</button>
+                <button onClick={() => resolveCovenantChoice({ companyId: company.id, type: 'equity_cure' })} className="px-2 py-1 text-[10px] border border-terminal-border rounded text-terminal-white hover:border-terminal-muted">Equity Cure</button>
+                <button onClick={() => resolveCovenantChoice({ companyId: company.id, type: 'forced_restructuring' })} className="px-2 py-1 text-[10px] border border-terminal-border rounded text-terminal-amber hover:border-terminal-amber">Forced Restructuring</button>
+                <button onClick={() => resolveCovenantChoice({ companyId: company.id, type: 'write_off' })} className="px-2 py-1 text-[10px] border border-terminal-red rounded text-terminal-red hover:bg-terminal-red/10">Write Off</button>
+              </div>
+            </div>
           )}
         </div>
       )}

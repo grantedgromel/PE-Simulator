@@ -2,7 +2,9 @@ import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple, formatPercent, formatFundCycle, formatQuarter } from '../../utils/formatters'
 
 export function TopBar() {
-  const { fund, currentFundCycle, currentYear, currentQuarter } = useGameStore()
+  const { fund, currentFundCycle, currentYear, currentQuarter, totalQuartersElapsed, investmentPeriodEndQuarter, fundEndQuarter } = useGameStore()
+  const isInvestment = totalQuartersElapsed < investmentPeriodEndQuarter
+  const quartersRemaining = fundEndQuarter - totalQuartersElapsed
 
   return (
     <div className="bg-terminal-surface border-b border-terminal-border px-4 py-2 flex items-center justify-between flex-shrink-0">
@@ -13,6 +15,13 @@ export function TopBar() {
         </span>
         <span className="text-terminal-muted text-xs font-mono">
           {formatFundCycle(currentFundCycle)} — {formatQuarter(currentYear, currentQuarter)}
+        </span>
+        <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+          isInvestment ? 'text-terminal-green bg-terminal-green/10' :
+          quartersRemaining <= 4 ? 'text-terminal-red bg-terminal-red/10' :
+          'text-terminal-amber bg-terminal-amber/10'
+        }`}>
+          {isInvestment ? 'INVESTING' : 'HARVESTING'} | {quartersRemaining}Q left
         </span>
       </div>
 
