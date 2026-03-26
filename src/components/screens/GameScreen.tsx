@@ -11,6 +11,7 @@ import { ExitsView } from '../phases/ExitsView'
 import { EndOfQuarter } from '../phases/EndOfQuarter'
 import { DialoguePanel } from '../dialogue/DialoguePanel'
 import { GameMap } from '../map/GameMap'
+import { MapOverlay } from '../map/MapOverlay'
 
 export function GameScreen() {
   const currentPhase = useGameStore((s) => s.currentPhase)
@@ -54,6 +55,7 @@ export function GameScreen() {
           {hasPortfolio && (
             <div className={`absolute inset-0 ${isMapPhase ? '' : 'opacity-20 pointer-events-none'}`}>
               <GameMap />
+              {isMapPhase && <MapOverlay />}
             </div>
           )}
 
