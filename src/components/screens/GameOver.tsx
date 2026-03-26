@@ -1,5 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple } from '../../utils/formatters'
+import { getLegacyStatement } from '../../data/flavorText'
 
 const GRADE_COLORS: Record<string, string> = {
   S: 'text-terminal-green',
@@ -50,6 +51,13 @@ export function GameOver() {
               {finalScore.totalEmployeesImpacted.toLocaleString()} employees
             </div>
           </div>
+        </div>
+
+        {/* Legacy Statement */}
+        <div className="text-center px-8">
+          <p className="text-sm text-terminal-muted italic">
+            {getLegacyStatement(finalScore.returnGrade, finalScore.humanImpactGrade)}
+          </p>
         </div>
 
         {/* Personal Economics */}

@@ -4,25 +4,13 @@ import { SectorPicker } from '../setup/SectorPicker'
 import { DifficultyPicker } from '../setup/DifficultyPicker'
 import { listSaves } from '../../utils/saveLoad'
 import { formatFundCycle, formatQuarter } from '../../utils/formatters'
-
-const LOADING_TIPS = [
-  'EBITDA is just a number until someone pays you for it.',
-  'If you\'re not levered, are you even trying?',
-  'Synergies are always 18 months away.',
-  'The best time to exit was last quarter.',
-  'Your portfolio company\'s Glassdoor rating is not a KPI. Unless it is.',
-  'A dividend recap a day keeps the J-curve at bay.',
-  'Operational excellence: the art of doing more with fewer people.',
-  'Every great platform started as a single overpriced acquisition.',
-  'If the bankers are calling you, the deal is probably picked over.',
-  'You\'re not firing anyone. You\'re "right-sizing the organization."',
-]
+import { getRandomTip } from '../../data/flavorText'
 
 export function MainMenu() {
   const { setup, startGame, loadGame } = useGameStore()
   const saves = listSaves()
   const hasSaves = saves.some((s) => s !== null)
-  const tip = LOADING_TIPS[Math.floor(Math.random() * LOADING_TIPS.length)]
+  const tip = getRandomTip()
 
   return (
     <div className="h-full flex flex-col items-center justify-center bg-terminal-bg overflow-y-auto">
@@ -118,7 +106,7 @@ export function MainMenu() {
 
         {/* Footer */}
         <div className="text-center text-terminal-muted text-xs font-mono pt-4">
-          v0.1.0 — Phase 1: Foundation
+          v1.0.0 — PE Simulator
         </div>
       </div>
     </div>
