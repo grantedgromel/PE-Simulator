@@ -76,6 +76,7 @@ export function createInitialState(
     teamMembers: [],
     lpBase: createInitialLPBase(),
     eventLog: [],
+    pendingEffects: [],
     historicalIRRByQuarter: [],
     personalCarryEstimate: 0,
     totalQuartersElapsed: 0,

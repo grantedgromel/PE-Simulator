@@ -36,6 +36,13 @@ export interface Deal {
   // Diligence
   diligenceLevelCompleted: number // 0-5
 
+  // Additional hidden stats (revealed by deeper diligence)
+  revenueQuality: number
+  competitivePosition: number
+  regulatoryRisk: number
+  hiddenLiabilities: number
+  diligenceCost: number
+
   // Financials for structuring
   enterpriseValue: number
   assignedPrincipalId?: string

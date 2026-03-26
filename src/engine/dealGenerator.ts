@@ -128,6 +128,12 @@ function generateSingleDeal(prng: PRNG, params: DealGenParams): Deal {
     hiddenRisks.push(riskPool.splice(idx, 1)[0])
   }
 
+  // Additional hidden stats for deeper diligence
+  const revenueQuality = prng.nextInt(30, 95)
+  const competitivePosition = prng.nextInt(20, 90)
+  const regulatoryRisk = prng.nextInt(5, 60)
+  const hiddenLiabilities = prng.chance(0.3) ? prng.nextFloat(0.5, 5.0) : 0
+
   // Determine deal source and competition
   const source = determineDealSource(prng, params.reputationScore, params.difficulty)
   const competingBidCount = determineCompetingBids(prng, source, params.difficulty)
@@ -168,6 +174,11 @@ function generateSingleDeal(prng: PRNG, params: DealGenParams): Deal {
     competingBidCount,
     playerBid: null,
     diligenceLevelCompleted: 0,
+    revenueQuality,
+    competitivePosition,
+    regulatoryRisk,
+    hiddenLiabilities: Math.round(hiddenLiabilities * 100) / 100,
+    diligenceCost: 0,
     enterpriseValue: Math.round(ev * 100) / 100,
     assignedPrincipalId: undefined,
   }

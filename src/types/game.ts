@@ -4,6 +4,7 @@ import type { Deal } from './deal'
 import type { TeamMember } from './team'
 import type { GameEvent } from './events'
 import type { LPBase } from './lp'
+import type { PendingEffect } from './effects'
 
 export type Sector =
   | 'Healthcare'
@@ -44,6 +45,7 @@ export interface GameState {
   lpBase: LPBase
   eventLog: GameEvent[]
   historicalIRRByQuarter: number[]
+  pendingEffects: PendingEffect[]
   personalCarryEstimate: number
   totalQuartersElapsed: number
 }

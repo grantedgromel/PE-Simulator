@@ -59,5 +59,10 @@ export interface PortfolioCompany {
   exitType?: ExitType
   exitMultiple?: number
   exitProceeds?: number
+  seniorDebtRate: number
+  mezzanineDebtRate: number
+  managementRolloverPct: number
+  costCutCount: number
+  covenantBreached: boolean
   assignedOperatingPartnerId?: string
 }
