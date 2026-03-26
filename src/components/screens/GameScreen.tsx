@@ -3,6 +3,7 @@ import { TopBar } from '../hud/TopBar'
 import { BottomBar } from '../hud/BottomBar'
 import { Sidebar } from '../hud/Sidebar'
 import { DealSourcing } from '../phases/DealSourcing'
+import { TeamAssignmentView } from '../phases/TeamAssignmentView'
 import { DiligenceView } from '../phases/DiligenceView'
 import { StructuringView } from '../phases/StructuringView'
 import { OperationsView } from '../phases/OperationsView'
@@ -16,6 +17,8 @@ export function GameScreen() {
     switch (currentPhase) {
       case 'Sourcing':
         return <DealSourcing />
+      case 'TeamAssignment':
+        return <TeamAssignmentView />
       case 'Diligence':
         return <DiligenceView />
       case 'Structuring':

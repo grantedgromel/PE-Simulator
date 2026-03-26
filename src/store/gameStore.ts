@@ -22,6 +22,7 @@ import {
   type AddOnTarget,
 } from '../engine/operationsEngine'
 import { calculateExitOptions, initiateExit } from '../engine/exitEngine'
+import { promoteTeamMember as promoteTeamMemberFn } from '../engine/teamEngine'
 import { PRNG } from '../engine/prng'
 import { saveToSlot, loadFromSlot } from '../utils/saveLoad'
 
@@ -78,6 +79,15 @@ interface GameStore extends GameState {
   executeAddOnAcquisition: (companyId: string, target: AddOnTarget) => void
   executeDividendRecapAction: (companyId: string, amount: number) => void
   resolveCovenantChoice: (choice: CovenantChoice) => void
+
+  // Team
+  assignTeamMember: (memberId: string, targetId: string) => void
+  unassignTeamMember: (memberId: string, targetId: string) => void
+  promoteTeamMember: (memberId: string) => void
+  hireTeamMember: (member: import('../types/team').TeamMember) => void
+  adjustCarry: (memberId: string, newPct: number) => void
+  handleBurnout: (memberId: string, choice: 'lighten' | 'push' | 'bonus') => void
+  handlePoaching: (memberId: string, choice: 'counter_carry' | 'counter_promote' | 'let_go' | 'do_nothing') => void
 
   // Exits
   initiateCompanyExit: (companyId: string, route: ExitRoute) => void
@@ -466,6 +476,115 @@ export const useGameStore = create<GameStore>((set, get) => ({
         portfolioCompanies: state.portfolioCompanies.map((c) => c.id === companyId ? updated : c),
       })
     }
+  },
+
+  // Team
+  assignTeamMember: (memberId, targetId) => {
+    set((s) => ({
+      teamMembers: s.teamMembers.map((tm) =>
+        tm.id === memberId
+          ? { ...tm, currentAssignments: [...tm.currentAssignments, targetId] }
+          : tm
+      ),
+    }))
+  },
+
+  unassignTeamMember: (memberId, targetId) => {
+    set((s) => ({
+      teamMembers: s.teamMembers.map((tm) =>
+        tm.id === memberId
+          ? { ...tm, currentAssignments: tm.currentAssignments.filter((a) => a !== targetId) }
+          : tm
+      ),
+    }))
+  },
+
+  promoteTeamMember: (memberId) => {
+    set((s) => ({
+      teamMembers: s.teamMembers.map((tm) =>
+        tm.id === memberId ? promoteTeamMemberFn(tm) : tm
+      ),
+    }))
+  },
+
+  hireTeamMember: (member) => {
+    set((s) => ({ teamMembers: [...s.teamMembers, member] }))
+  },
+
+  adjustCarry: (memberId, newPct) => {
+    set((s) => ({
+      teamMembers: s.teamMembers.map((tm) =>
+        tm.id === memberId ? { ...tm, carryAllocationPct: newPct, morale: Math.min(100, tm.morale + 15) } : tm
+      ),
+    }))
+  },
+
+  handleBurnout: (memberId, choice) => {
+    set((s) => {
+      const member = s.teamMembers.find((tm) => tm.id === memberId)
+      if (!member) return {}
+      let updated = { ...member }
+      if (choice === 'lighten') {
+        updated.currentAssignments = updated.currentAssignments.slice(0, 1)
+        updated.consecutiveMaxCapacityQuarters = 0
+        updated.morale = Math.min(100, updated.morale + 10)
+      } else if (choice === 'bonus') {
+        updated.consecutiveMaxCapacityQuarters = 0
+        updated.morale = Math.min(100, updated.morale + 20)
+        return {
+          teamMembers: s.teamMembers.map((tm) => tm.id === memberId ? updated : tm),
+          fund: { ...s.fund, remainingCapital: Math.round((s.fund.remainingCapital - 0.3) * 100) / 100 },
+        }
+      } else {
+        // push through — skills degrade
+        updated.skills = {
+          ...updated.skills,
+          dealSourcing: Math.max(1, updated.skills.dealSourcing - 2),
+          diligence: Math.max(1, updated.skills.diligence - 2),
+          operationalExecution: Math.max(1, updated.skills.operationalExecution - 2),
+          lpRelations: Math.max(1, updated.skills.lpRelations - 2),
+        }
+        updated.status = 'BurnedOut'
+      }
+      return { teamMembers: s.teamMembers.map((tm) => tm.id === memberId ? updated : tm) }
+    })
+  },
+
+  handlePoaching: (memberId, choice) => {
+    set((s) => {
+      const member = s.teamMembers.find((tm) => tm.id === memberId)
+      if (!member) return {}
+      if (choice === 'counter_carry') {
+        return {
+          teamMembers: s.teamMembers.map((tm) =>
+            tm.id === memberId ? { ...tm, carryAllocationPct: tm.carryAllocationPct + 3, morale: Math.min(100, tm.morale + 15) } : tm
+          ),
+        }
+      } else if (choice === 'counter_promote') {
+        return {
+          teamMembers: s.teamMembers.map((tm) =>
+            tm.id === memberId ? promoteTeamMemberFn(tm) : tm
+          ),
+        }
+      } else if (choice === 'let_go') {
+        return {
+          teamMembers: s.teamMembers.map((tm) =>
+            tm.id === memberId ? { ...tm, status: 'Poached' as const, currentAssignments: [] } : tm
+          ),
+        }
+      } else {
+        // do nothing — 50% chance they stay if morale > 60
+        const stays = member.morale > 60 && Math.random() > 0.5
+        if (!stays) {
+          return {
+            teamMembers: s.teamMembers.map((tm) =>
+              tm.id === memberId ? { ...tm, status: 'Poached' as const, currentAssignments: [] } : tm
+            ),
+          }
+        }
+        return {}
+      }
+    })
   },
 
   // Save/Load

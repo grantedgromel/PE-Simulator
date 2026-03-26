@@ -17,6 +17,7 @@ export type Difficulty = 'Easy' | 'Normal' | 'Hard'
 
 export type GamePhase =
   | 'Sourcing'
+  | 'TeamAssignment'
   | 'Diligence'
   | 'Structuring'
   | 'Operations'

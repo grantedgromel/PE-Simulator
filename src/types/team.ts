@@ -19,10 +19,11 @@ export interface Skills {
 }
 
 export interface ExperienceEntry {
-  type: 'deal' | 'portfolio' | 'exit'
+  type: 'deal_closed' | 'deal_lost' | 'exit_completed' | 'portfolio_quarter' | 'add_on_closed'
   entityId: string
   entityName: string
   outcome: 'success' | 'neutral' | 'failure'
+  sector: string
   quarter: number
   year: number
 }

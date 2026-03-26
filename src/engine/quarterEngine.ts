@@ -5,10 +5,12 @@ import { simulateAllCompanies } from './companySimulation'
 import { updateMarketConditions } from './marketConditions'
 import { generateQuarterlyEvents } from './eventEngine'
 import { completeExit, forceExitAll } from './exitEngine'
+import { processSkillDevelopment, checkTeamEvents } from './teamEngine'
 import { PRNG } from './prng'
 
 const PHASE_ORDER: GamePhase[] = [
   'Sourcing',
+  'TeamAssignment',
   'Diligence',
   'Structuring',
   'Operations',
@@ -26,9 +28,16 @@ export function getNextPhase(state: GameState): GamePhase {
   for (let i = currentIndex + 1; i < PHASE_ORDER.length; i++) {
     const phase = PHASE_ORDER[i]
 
-    // Skip Sourcing/Diligence/Structuring after investment period ends
-    if (!isInvestmentPeriod && (phase === 'Sourcing' || phase === 'Diligence' || phase === 'Structuring')) {
+    // Skip Sourcing/TeamAssignment/Diligence/Structuring after investment period ends
+    if (!isInvestmentPeriod && (phase === 'Sourcing' || phase === 'TeamAssignment' || phase === 'Diligence' || phase === 'Structuring')) {
       continue
+    }
+
+    // TeamAssignment: show if there are deals to assign or portfolio to manage
+    if (phase === 'TeamAssignment') {
+      const hasPursued = state.currentDeals.some((d) => d.status === 'Pursued')
+      const hasPortfolio = state.portfolioCompanies.some((c) => c.status === 'Active')
+      if (!hasPursued && !hasPortfolio) continue
     }
 
     if (phase === 'Diligence') {
@@ -184,8 +193,24 @@ export function processEndOfQuarter(state: GameState): GameState {
       })
     : []
 
+  // 7b. Process team: skill development and events
+  const developedTeam = processSkillDevelopment(state.teamMembers, newTotalQuarters)
+  const { events: teamEventsList, updatedMembers: teamAfterEvents } = checkTeamEvents(
+    prng, developedTeam, state.difficulty, updatedFund.reputationScore, newTotalQuarters,
+  )
+  const teamEvents: import('../types/events').GameEvent[] = teamEventsList.map((te) => ({
+    id: `evt-team-${te.memberId}-${newTotalQuarters}`,
+    category: 'Team' as const,
+    title: te.type === 'burnout' ? 'Burnout Warning' : te.type === 'poaching' ? 'Poaching Attempt' : 'Team Update',
+    description: te.description,
+    quarter: newTotalQuarters,
+    year: nextYear,
+    impact: {},
+    resolved: false,
+  }))
+
   // Combine all events
-  const allNewEvents = [...simEvents, ...randomEvents]
+  const allNewEvents = [...simEvents, ...randomEvents, ...teamEvents]
 
   // 8. Check for fund completion
   const fundComplete = newTotalQuarters >= state.fundEndQuarter
@@ -200,6 +225,7 @@ export function processEndOfQuarter(state: GameState): GameState {
     currentDeals: newDeals,
     portfolioCompanies: eventedPortfolio,
     exitedCompanies,
+    teamMembers: teamAfterEvents,
     pendingEffects: remainingEffects,
     marketConditions: newMarket,
     exitResults,

@@ -3,6 +3,7 @@ import type { Fund } from '../types/fund'
 import type { LPBase } from '../types/lp'
 import { PRNG } from './prng'
 import { generateDeals } from './dealGenerator'
+import { generateStartingTeam } from './teamEngine'
 
 function createInitialFund(name: string, sector: Sector): Fund {
   return {
@@ -49,6 +50,9 @@ export function createInitialState(
 
   const fund = createInitialFund(fundName, sector)
 
+  // Generate starting team
+  const startingTeam = generateStartingTeam(prng, sector)
+
   // Generate initial deal flow
   const initialDeals = generateDeals(prng, {
     sector,
@@ -73,7 +77,7 @@ export function createInitialState(
     exitedCompanies: [],
     writtenOffCompanies: [],
     currentDeals: initialDeals,
-    teamMembers: [],
+    teamMembers: startingTeam,
     lpBase: createInitialLPBase(),
     eventLog: [],
     pendingEffects: [],

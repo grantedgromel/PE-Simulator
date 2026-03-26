@@ -3,11 +3,12 @@ import { useGameStore } from '../../store/gameStore'
 
 const PHASES: { id: GamePhase; label: string }[] = [
   { id: 'Sourcing', label: 'SOURCING' },
+  { id: 'TeamAssignment', label: 'TEAM' },
   { id: 'Diligence', label: 'DILIGENCE' },
   { id: 'Structuring', label: 'STRUCTURING' },
-  { id: 'Operations', label: 'OPERATIONS' },
+  { id: 'Operations', label: 'OPS' },
   { id: 'Exits', label: 'EXITS' },
-  { id: 'EndOfQuarter', label: 'END OF QTR' },
+  { id: 'EndOfQuarter', label: 'END QTR' },
 ]
 
 export function BottomBar() {
@@ -25,6 +26,8 @@ export function BottomBar() {
     handleClick = endQuarter
   } else if (currentPhase === 'Sourcing') {
     buttonLabel = 'END SOURCING'
+  } else if (currentPhase === 'TeamAssignment') {
+    buttonLabel = 'CONFIRM ASSIGNMENTS'
   } else if (currentPhase === 'Diligence') {
     const pursuedDeals = currentDeals.filter((d) => d.status === 'Pursued')
     const allBidsSubmitted = pursuedDeals.every((d) => d.playerBid !== null)
