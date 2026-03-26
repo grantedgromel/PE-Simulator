@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-terminal-bg: #0a0a0f;
+  --color-terminal-surface: #12121a;
+  --color-terminal-border: #1e1e2e;
+  --color-terminal-green: #00ff88;
+  --color-terminal-amber: #ffb700;
+  --color-terminal-red: #ff4444;
+  --color-terminal-white: #e8e8ed;
+  --color-terminal-muted: #6b6b7b;
+  --color-terminal-blue: #4488ff;
+  --color-terminal-surface-hover: #1a1a28;
+
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-terminal-bg);
+  color: var(--color-terminal-white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-terminal-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-terminal-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-terminal-muted);
+}
