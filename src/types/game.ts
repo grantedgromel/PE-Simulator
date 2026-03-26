@@ -1,4 +1,4 @@
-import type { Fund } from './fund'
+import type { Fund, FundRecord, FinalScore } from './fund'
 import type { PortfolioCompany } from './company'
 import type { Deal } from './deal'
 import type { TeamMember } from './team'
@@ -24,7 +24,7 @@ export type GamePhase =
   | 'Exits'
   | 'EndOfQuarter'
 
-export type Screen = 'menu' | 'game' | 'fundComplete'
+export type Screen = 'menu' | 'game' | 'fundComplete' | 'fundraising' | 'lpReport' | 'gameOver'
 
 export type FundCycle = 1 | 2 | 3
 
@@ -51,6 +51,10 @@ export interface GameState {
   exitResults: ExitResult[]
   fundEndQuarter: number
   investmentPeriodEndQuarter: number
+  fundHistory: FundRecord[]
   personalCarryEstimate: number
+  totalPersonalCarry: number
   totalQuartersElapsed: number
+  lpReportPending: boolean
+  finalScore: FinalScore | null
 }

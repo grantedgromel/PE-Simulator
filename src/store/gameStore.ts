@@ -23,6 +23,9 @@ import {
 } from '../engine/operationsEngine'
 import { calculateExitOptions, initiateExit } from '../engine/exitEngine'
 import { promoteTeamMember as promoteTeamMemberFn } from '../engine/teamEngine'
+import { createNextFundState } from '../engine/initialState'
+import { calculatePersonalCarry } from '../engine/carryWaterfall'
+import { createFundRecord, calculateFinalScore } from '../engine/fundraisingEngine'
 import { PRNG } from '../engine/prng'
 import { saveToSlot, loadFromSlot } from '../utils/saveLoad'
 
@@ -92,6 +95,11 @@ interface GameStore extends GameState {
   // Exits
   initiateCompanyExit: (companyId: string, route: ExitRoute) => void
 
+  // Fund progression
+  submitLPReport: (framingChoices: Record<string, 'honest' | 'spin' | 'omit'>) => void
+  startNextFund: (newFundSize: number) => void
+  endGame: () => void
+
   // Save/load
   saveGame: (slot: number) => void
   loadGame: (slot: number) => boolean
@@ -130,12 +138,17 @@ function createDefaultState(): GameState {
       totalInvested: 0,
       netIRR: null,
       grossIRR: null,
+      netMoic: null,
       dpi: 0,
       tvpi: 0,
       rvpi: 0,
       moic: null,
       managementFeesCollected: 0,
       carryAccrued: 0,
+      gpTotalCarry: 0,
+      irrByQuarter: [],
+      capitalCalls: [],
+      lpDistributions: [],
     },
     portfolioCompanies: [],
     exitedCompanies: [],
@@ -149,9 +162,13 @@ function createDefaultState(): GameState {
     exitResults: [],
     fundEndQuarter: 40,
     investmentPeriodEndQuarter: 20,
+    fundHistory: [],
     historicalIRRByQuarter: [],
     personalCarryEstimate: 0,
+    totalPersonalCarry: 0,
     totalQuartersElapsed: 0,
+    lpReportPending: false,
+    finalScore: null,
   }
 }
 
@@ -585,6 +602,78 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return {}
       }
     })
+  },
+
+  // Fund progression
+  submitLPReport: (framingChoices) => {
+    const state = get()
+    let trustDelta = 0
+    let repDelta = 0
+
+    for (const [, choice] of Object.entries(framingChoices)) {
+      if (choice === 'honest') { trustDelta += 3; repDelta += 2 }
+      else if (choice === 'spin') { trustDelta -= 2 }
+      else if (choice === 'omit') { trustDelta -= 1 }
+    }
+
+    set({
+      fund: {
+        ...state.fund,
+        lpTrustScore: Math.max(0, Math.min(100, state.fund.lpTrustScore + trustDelta)),
+        reputationScore: Math.max(0, Math.min(100, state.fund.reputationScore + repDelta)),
+      },
+      lpReportPending: false,
+      screen: 'game',
+    })
+  },
+
+  startNextFund: (newFundSize) => {
+    const state = get()
+    // Save current fund to history
+    const carryInfo = calculatePersonalCarry(
+      state.fund.gpTotalCarry,
+      state.teamMembers.map((tm) => ({ name: tm.name, pct: tm.carryAllocationPct })),
+    )
+    const record = createFundRecord(
+      state.fund,
+      state.currentFundCycle,
+      state.exitResults,
+      state.writtenOffCompanies.length,
+      carryInfo.playerCarryDollars,
+    )
+
+    const newState = createNextFundState(state, newFundSize, state.teamMembers)
+    set({
+      ...newState,
+      fundHistory: [...state.fundHistory, record],
+      totalPersonalCarry: state.totalPersonalCarry + carryInfo.playerCarryDollars,
+      auctionResults: [],
+      structuringDealId: null,
+      addOnTargets: [],
+      quarterEvents: [],
+    })
+  },
+
+  endGame: () => {
+    const state = get()
+    const carryInfo = calculatePersonalCarry(
+      state.fund.gpTotalCarry,
+      state.teamMembers.map((tm) => ({ name: tm.name, pct: tm.carryAllocationPct })),
+    )
+    const lastRecord = createFundRecord(
+      state.fund,
+      state.currentFundCycle,
+      state.exitResults,
+      state.writtenOffCompanies.length,
+      carryInfo.playerCarryDollars,
+    )
+    const allHistory = [...state.fundHistory, lastRecord]
+    const finalScore = calculateFinalScore(
+      allHistory,
+      state.exitedCompanies,
+      state.writtenOffCompanies,
+    )
+    set({ screen: 'gameOver', finalScore })
   },
 
   // Save/Load

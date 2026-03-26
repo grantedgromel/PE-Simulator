@@ -2,7 +2,7 @@ import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple, formatPercent } from '../../utils/formatters'
 
 export function FundComplete() {
-  const { fund, exitResults, exitedCompanies, writtenOffCompanies, portfolioCompanies, returnToMenu } = useGameStore()
+  const { fund, exitResults, exitedCompanies, writtenOffCompanies, portfolioCompanies, setScreen } = useGameStore()
 
   const totalInvested = exitResults.reduce((sum, r) => sum + r.totalInvested, 0)
   const totalProceeds = exitResults.reduce((sum, r) => sum + r.totalProceeds, 0)
@@ -105,10 +105,10 @@ export function FundComplete() {
         <div className="border-t border-terminal-border" />
 
         <button
-          onClick={returnToMenu}
-          className="w-full py-4 bg-terminal-surface border border-terminal-border text-terminal-white font-mono rounded hover:border-terminal-muted transition-colors"
+          onClick={() => setScreen('fundraising')}
+          className="w-full py-4 bg-terminal-amber/20 border border-terminal-amber text-terminal-amber font-mono rounded hover:bg-terminal-amber/30 transition-colors"
         >
-          RETURN TO MENU
+          PROCEED TO FUNDRAISING
         </button>
       </div>
     </div>

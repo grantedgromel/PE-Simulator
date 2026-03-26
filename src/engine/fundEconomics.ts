@@ -1,20 +1,19 @@
 import type { Fund } from '../types/fund'
+import { calculateWaterfall } from './carryWaterfall'
 
 /**
  * Calculate quarterly management fee.
- * During investment period (years 1-5): 2% of committed capital / 4
- * After investment period: 1.5% of invested (deployed) capital / 4
  */
 export function calculateQuarterlyManagementFee(fund: Fund, yearInFund: number): number {
   if (yearInFund <= 5) {
     return (fund.managementFeeRate * fund.committedCapital) / 4
   }
-  return (0.015 * fund.deployedCapital) / 4
+  const investedCapital = Math.max(0, fund.deployedCapital - fund.totalDistributions)
+  return (0.015 * investedCapital) / 4
 }
 
 /**
- * Calculate MOIC (Multiple on Invested Capital).
- * Total Value / Total Invested
+ * Calculate MOIC.
  */
 export function calculateMOIC(fund: Fund): number | null {
   if (fund.totalInvested === 0) return null
@@ -23,8 +22,7 @@ export function calculateMOIC(fund: Fund): number | null {
 }
 
 /**
- * Calculate DPI (Distributions to Paid-In).
- * Cumulative Distributions / Total Invested
+ * Calculate DPI.
  */
 export function calculateDPI(fund: Fund): number {
   if (fund.totalInvested === 0) return 0
@@ -32,8 +30,7 @@ export function calculateDPI(fund: Fund): number {
 }
 
 /**
- * Calculate TVPI (Total Value to Paid-In).
- * (Distributions + Remaining Value) / Total Invested
+ * Calculate TVPI.
  */
 export function calculateTVPI(fund: Fund): number {
   if (fund.totalInvested === 0) return 0
@@ -42,34 +39,47 @@ export function calculateTVPI(fund: Fund): number {
 }
 
 /**
- * Calculate RVPI (Remaining Value to Paid-In).
- * Remaining Value / Total Invested
+ * Calculate RVPI.
  */
 export function calculateRVPI(fund: Fund): number {
   if (fund.totalInvested === 0) return 0
   return calculateRemainingValue(fund) / fund.totalInvested
 }
 
-/**
- * Remaining value = sum of current implied valuations of active portfolio companies minus debt.
- * For now, a stub returning deployedCapital - totalDistributions (simplified).
- */
 function calculateRemainingValue(fund: Fund): number {
   return Math.max(0, fund.deployedCapital - fund.totalDistributions)
 }
 
 /**
- * Update all fund metrics. Call at end of each quarter.
+ * Update all fund metrics including carry waterfall. Called at end of each quarter.
  */
 export function updateFundMetrics(fund: Fund, yearInFund: number): Fund {
   const fee = calculateQuarterlyManagementFee(fund, yearInFund)
+
+  // Run carry waterfall
+  const quartersInvested = fund.irrByQuarter.length || 1
+  const waterfall = calculateWaterfall(fund.totalDistributions, fund.totalInvested, quartersInvested)
+
+  const moic = calculateMOIC(fund)
+  const dpi = calculateDPI(fund)
+  const tvpi = calculateTVPI(fund)
+  const rvpi = calculateRVPI(fund)
+
+  // Net MOIC (LP perspective): total to LP / LP invested (capital + fees)
+  const lpInvested = fund.totalInvested + fund.managementFeesCollected + fee
+  const netMoic = lpInvested > 0 ? (waterfall.totalToLP + calculateRemainingValue(fund)) / lpInvested : null
+
   return {
     ...fund,
-    managementFeesCollected: fund.managementFeesCollected + fee,
+    managementFeesCollected: Math.round((fund.managementFeesCollected + fee) * 100) / 100,
     remainingCapital: fund.committedCapital - fund.deployedCapital,
-    moic: calculateMOIC(fund),
-    dpi: calculateDPI(fund),
-    tvpi: calculateTVPI(fund),
-    rvpi: calculateRVPI(fund),
+    moic,
+    netMoic,
+    dpi,
+    tvpi,
+    rvpi,
+    gpTotalCarry: waterfall.totalToGP,
+    carryAccrued: waterfall.totalToGP,
+    irrByQuarter: [...fund.irrByQuarter, netMoic !== null ? (netMoic - 1) * 0.1 : 0], // simplified net IRR proxy per quarter
   }
 }

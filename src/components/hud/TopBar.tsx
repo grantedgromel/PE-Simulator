@@ -1,5 +1,5 @@
 import { useGameStore } from '../../store/gameStore'
-import { formatCurrency, formatMultiple, formatPercent, formatFundCycle, formatQuarter } from '../../utils/formatters'
+import { formatCurrency, formatMultiple, formatFundCycle, formatQuarter } from '../../utils/formatters'
 
 export function TopBar() {
   const { fund, currentFundCycle, currentYear, currentQuarter, totalQuartersElapsed, investmentPeriodEndQuarter, fundEndQuarter } = useGameStore()
@@ -26,18 +26,22 @@ export function TopBar() {
       </div>
 
       {/* Key metrics */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
         <MetricDisplay label="CASH" value={formatCurrency(fund.remainingCapital)} />
         <MetricDisplay label="DEPLOYED" value={formatCurrency(fund.deployedCapital)} />
         <MetricDisplay
-          label="NET IRR"
-          value={fund.netIRR !== null ? formatPercent(fund.netIRR) : '—'}
-        />
-        <MetricDisplay
-          label="MOIC"
+          label="GROSS MOIC"
           value={fund.moic !== null ? formatMultiple(fund.moic) : '—'}
         />
+        <MetricDisplay
+          label="NET MOIC"
+          value={fund.netMoic !== null ? formatMultiple(fund.netMoic) : '—'}
+        />
         <MetricDisplay label="DPI" value={fund.dpi > 0 ? formatMultiple(fund.dpi) : '—'} />
+        <MetricDisplay
+          label="CARRY"
+          value={fund.gpTotalCarry > 0 ? formatCurrency(fund.gpTotalCarry) : '—'}
+        />
       </div>
     </div>
   )

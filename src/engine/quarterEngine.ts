@@ -212,12 +212,20 @@ export function processEndOfQuarter(state: GameState): GameState {
   // Combine all events
   const allNewEvents = [...simEvents, ...randomEvents, ...teamEvents]
 
-  // 8. Check for fund completion
+  // 8. Check for fund completion and LP report trigger
   const fundComplete = newTotalQuarters >= state.fundEndQuarter
+  const isQ4 = nextQuarter === 4 && !fundComplete
+  const lpReportDue = isQ4 && eventedPortfolio.length > 0
+
+  // Determine screen
+  let nextScreen = state.screen
+  if (fundComplete) nextScreen = 'fundComplete'
+  else if (lpReportDue) nextScreen = 'lpReport'
 
   return {
     ...state,
-    screen: fundComplete ? 'fundComplete' : state.screen,
+    screen: nextScreen,
+    lpReportPending: lpReportDue,
     currentQuarter: nextQuarter as 1 | 2 | 3 | 4,
     currentYear: nextYear,
     currentPhase: fundComplete ? 'EndOfQuarter' : (isInvestmentPeriod ? 'Sourcing' : 'Operations'),
