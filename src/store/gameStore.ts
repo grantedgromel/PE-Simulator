@@ -26,6 +26,9 @@ import { promoteTeamMember as promoteTeamMemberFn } from '../engine/teamEngine'
 import { createNextFundState } from '../engine/initialState'
 import { calculatePersonalCarry } from '../engine/carryWaterfall'
 import { createFundRecord, calculateFinalScore } from '../engine/fundraisingEngine'
+import type { ActiveDialogue } from '../engine/dialogueEngine'
+import { advanceDialogue as advanceDialogueEngine } from '../engine/dialogueEngine'
+import { getDialogueTree, generateCharacterForContext } from '../data/dialogueTrees'
 import { PRNG } from '../engine/prng'
 import { saveToSlot, loadFromSlot } from '../utils/saveLoad'
 
@@ -49,6 +52,7 @@ interface GameStore extends GameState {
   structuringDealId: string | null
   addOnTargets: AddOnTarget[]
   quarterEvents: import('../types/events').GameEvent[]
+  activeDialogue: ActiveDialogue | null
 
   // Setup
   setScreen: (screen: Screen) => void
@@ -94,6 +98,11 @@ interface GameStore extends GameState {
 
   // Exits
   initiateCompanyExit: (companyId: string, route: ExitRoute) => void
+
+  // Dialogue
+  startDialogue: (context: string, additionalContext?: Record<string, unknown>) => void
+  advanceDialogue: (responseIndex: number) => void
+  dismissDialogue: () => void
 
   // Fund progression
   submitLPReport: (framingChoices: Record<string, 'honest' | 'spin' | 'omit'>) => void
@@ -182,6 +191,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   structuringDealId: null,
   addOnTargets: [],
   quarterEvents: [],
+  activeDialogue: null,
 
   setScreen: (screen) => set({ screen }),
   setFundName: (name) => set((s) => ({ setup: { ...s.setup, fundName: name } })),
@@ -603,6 +613,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     })
   },
+
+  // Dialogue
+  startDialogue: (context, additionalContext = {}) => {
+    const state = get()
+    const tree = getDialogueTree(context)
+    if (!tree) return
+    const prng = new PRNG(state.seed + state.prngCounter + context.length)
+    const character = generateCharacterForContext(context, prng, additionalContext)
+    set({
+      activeDialogue: {
+        tree,
+        character,
+        currentNodeId: tree.startNodeId,
+        context: additionalContext,
+        history: [],
+      },
+    })
+  },
+
+  advanceDialogue: (responseIndex) => {
+    const state = get()
+    if (!state.activeDialogue) return
+    const result = advanceDialogueEngine(state.activeDialogue, responseIndex, state)
+    if (result.dialogue) {
+      set({ activeDialogue: result.dialogue })
+    } else {
+      set({ activeDialogue: null })
+    }
+  },
+
+  dismissDialogue: () => set({ activeDialogue: null }),
 
   // Fund progression
   submitLPReport: (framingChoices) => {

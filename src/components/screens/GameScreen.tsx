@@ -9,9 +9,12 @@ import { StructuringView } from '../phases/StructuringView'
 import { OperationsView } from '../phases/OperationsView'
 import { ExitsView } from '../phases/ExitsView'
 import { EndOfQuarter } from '../phases/EndOfQuarter'
+import { DialoguePanel } from '../dialogue/DialoguePanel'
 
 export function GameScreen() {
   const currentPhase = useGameStore((s) => s.currentPhase)
+  const activeDialogue = useGameStore((s) => s.activeDialogue)
+  const dismissDialogue = useGameStore((s) => s.dismissDialogue)
 
   const renderPhaseContent = () => {
     switch (currentPhase) {
@@ -44,6 +47,15 @@ export function GameScreen() {
         <Sidebar />
       </div>
       <BottomBar />
+
+      {/* Dialogue overlay */}
+      {activeDialogue && (
+        <DialoguePanel
+          dialogue={activeDialogue}
+          onComplete={() => dismissDialogue()}
+          onDismiss={dismissDialogue}
+        />
+      )}
     </div>
   )
 }
