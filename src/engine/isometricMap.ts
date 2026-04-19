@@ -1,6 +1,6 @@
 import type { PortfolioCompany } from '../types/company'
 import type { TeamMember } from '../types/team'
-import type { FundCycle } from '../types/game'
+import type { FundCycle, Sector } from '../types/game'
 
 export const TILE_WIDTH = 64
 export const TILE_HEIGHT = 32
@@ -12,6 +12,9 @@ export interface MapBuilding {
   gridX: number
   gridY: number
   sector: string
+  sectorTyped: Sector | null
+  visualTier: 1 | 2 | 3
+  buildingVariant: number
   healthState: 'healthy' | 'stressed' | 'distressed' | 'construction' | 'exited' | 'destroyed'
   addOnCount: number
   isHQ: boolean
@@ -107,6 +110,9 @@ export function generateMapState(
       gridX: hqX,
       gridY: hqY,
       sector: 'hq',
+      sectorTyped: null,
+      visualTier: fundCycle,
+      buildingVariant: 0,
       healthState: 'healthy',
       addOnCount: 0,
       isHQ: true,
@@ -129,6 +135,9 @@ export function generateMapState(
       gridX: pos.gridX,
       gridY: pos.gridY,
       sector: company.sector,
+      sectorTyped: company.sector,
+      visualTier: company.visualTier ?? 1,
+      buildingVariant: company.buildingVariant ?? 0,
       healthState: getBuildingHealthState(company),
       addOnCount: company.addOnCount,
       isHQ: false,

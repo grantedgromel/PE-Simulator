@@ -87,4 +87,7 @@ export interface PortfolioCompany {
   consequenceLedger: ConsequenceLedger
   exitInProgress: import('../types/effects').ExitInProgress | null
   assignedOperatingPartnerId?: string
+  // Visual presentation — deterministic per company id; safe to derive if missing.
+  visualTier: 1 | 2 | 3
+  buildingVariant: number
 }

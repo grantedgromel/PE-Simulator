@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { Application, Graphics, Container, Text, TextStyle } from 'pixi.js'
+import { Application, Graphics, Container, Text, TextStyle, Sprite } from 'pixi.js'
 import { useGameStore } from '../../store/gameStore'
 import {
   generateMapState,
@@ -8,6 +8,14 @@ import {
   type MapBuilding,
   type MapRoad,
 } from '../../engine/isometricMap'
+import {
+  getBuildingSpritePath,
+  getBuildingSpriteFallbackPath,
+  getHQSpritePath,
+  SECTOR_PALETTE,
+  type HealthState,
+} from '../../engine/assetRegistry'
+import { loadTexture, peekTexture } from '../../engine/spriteCache'
 
 const COLORS = {
   bg: 0x0a0a0f,
@@ -24,6 +32,15 @@ const COLORS = {
   windowOff: 0x1a1a28,
   text: 0xe8e8ed,
   textMuted: 0x6b6b7b,
+}
+
+const HEALTH_TINT: Record<HealthState, number | null> = {
+  healthy: null,
+  stressed: 0xffcc66,
+  distressed: 0xff6666,
+  construction: 0x88aaff,
+  exited: 0x888888,
+  destroyed: 0x444444,
 }
 
 const HEALTH_COLORS: Record<string, number> = {
@@ -44,6 +61,8 @@ export function GameMap({ onBuildingClick }: GameMapProps) {
   const appRef = useRef<Application | null>(null)
   const worldRef = useRef<Container | null>(null)
   const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null)
+  // Bumped when a sprite texture finishes loading so the renderer re-runs.
+  const [spriteVersion, setSpriteVersion] = useState(0)
 
   const { portfolioCompanies, teamMembers, currentFundCycle } = useGameStore()
 
@@ -97,11 +116,13 @@ export function GameMap({ onBuildingClick }: GameMapProps) {
       drawRoad(world, road)
     }
 
-    // Draw buildings
+    // Draw buildings — sprite-first, fallback to Graphics.
     for (const building of mapState.buildings) {
-      drawBuilding(world, building, building.companyId === hoveredBuilding)
+      drawBuilding(world, building, building.companyId === hoveredBuilding, () => {
+        setSpriteVersion((v) => v + 1)
+      })
     }
-  }, [mapState, hoveredBuilding])
+  }, [mapState, hoveredBuilding, spriteVersion])
 
   // Mouse interaction
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -199,20 +220,39 @@ function drawRoad(container: Container, road: MapRoad) {
   container.addChild(g)
 }
 
-function drawBuilding(container: Container, building: MapBuilding, hovered: boolean) {
+/**
+ * Render a building. Tries to use a real sprite asset if one is available in
+ * the sprite cache; otherwise falls back to the procedural Graphics renderer
+ * (so the game stays fully playable with zero assets installed).
+ *
+ * When a sprite finishes loading asynchronously, onSpriteReady is called so
+ * the caller can trigger a re-render.
+ */
+function drawBuilding(
+  container: Container,
+  building: MapBuilding,
+  hovered: boolean,
+  onSpriteReady: () => void,
+) {
   const pos = gridToScreen(building.gridX, building.gridY)
   const buildingContainer = new Container()
   buildingContainer.x = pos.x
   buildingContainer.y = pos.y
   buildingContainer.zIndex = building.gridX + building.gridY
 
-  const color = building.isHQ ? COLORS.hq : HEALTH_COLORS[building.healthState] ?? COLORS.exited
-  const alpha = building.healthState === 'exited' ? 0.4 : building.healthState === 'destroyed' ? 0.2 : 0.8
+  const spritePaths = buildingSpritePaths(building)
+  const cachedSprite = firstCachedSprite(spritePaths)
 
-  if (building.isHQ) {
+  if (cachedSprite) {
+    renderSprite(buildingContainer, cachedSprite, building, hovered)
+  } else if (building.isHQ) {
     drawHQBuilding(buildingContainer, building, hovered)
+    ensureSpriteLoaded(spritePaths, onSpriteReady)
   } else {
+    const color = HEALTH_COLORS[building.healthState] ?? COLORS.exited
+    const alpha = building.healthState === 'exited' ? 0.4 : building.healthState === 'destroyed' ? 0.2 : 0.8
     drawPortfolioBuilding(buildingContainer, building, color, alpha, hovered)
+    ensureSpriteLoaded(spritePaths, onSpriteReady)
   }
 
   // Name label
@@ -236,7 +276,9 @@ function drawBuilding(container: Container, building: MapBuilding, hovered: bool
   }
 
   // Add-on indicators
-  if (building.addOnCount > 0) {
+  if (building.addOnCount > 0 && !cachedSprite) {
+    const color = HEALTH_COLORS[building.healthState] ?? COLORS.exited
+    const alpha = building.healthState === 'exited' ? 0.4 : 0.8
     for (let i = 0; i < Math.min(building.addOnCount, 4); i++) {
       const addon = new Graphics()
       const offsetX = (i - building.addOnCount / 2) * 14
@@ -250,9 +292,70 @@ function drawBuilding(container: Container, building: MapBuilding, hovered: bool
   container.addChild(buildingContainer)
 }
 
+function buildingSpritePaths(building: MapBuilding): string[] {
+  if (building.isHQ) {
+    return [getHQSpritePath(building.visualTier)]
+  }
+  if (!building.sectorTyped) return []
+  return [
+    getBuildingSpritePath(
+      building.sectorTyped,
+      building.buildingVariant,
+      building.visualTier,
+      building.healthState,
+    ),
+    getBuildingSpriteFallbackPath(building.sectorTyped, building.buildingVariant),
+  ]
+}
+
+function firstCachedSprite(paths: string[]) {
+  for (const p of paths) {
+    const tex = peekTexture(p)
+    if (tex) return tex
+  }
+  return null
+}
+
+function ensureSpriteLoaded(paths: string[], onReady: () => void) {
+  if (paths.length === 0) return
+  let done = false
+  void (async () => {
+    for (const p of paths) {
+      const tex = await loadTexture(p)
+      if (tex) {
+        if (!done) {
+          done = true
+          onReady()
+        }
+        return
+      }
+    }
+  })()
+}
+
+function renderSprite(
+  container: Container,
+  texture: import('pixi.js').Texture,
+  building: MapBuilding,
+  hovered: boolean,
+) {
+  const sprite = new Sprite(texture)
+  sprite.anchor.set(0.5, 1)
+  const baseScale = building.isHQ ? 0.7 + building.visualTier * 0.12 : 0.5 + building.visualTier * 0.1
+  sprite.scale.set(baseScale, baseScale)
+
+  const tint = HEALTH_TINT[building.healthState]
+  if (tint !== null) sprite.tint = tint
+  sprite.alpha = building.healthState === 'destroyed' ? 0.35 : building.healthState === 'exited' ? 0.6 : hovered ? 1 : 0.95
+
+  container.addChild(sprite)
+}
+
+// === PROCEDURAL FALLBACKS ===
+
 function drawHQBuilding(container: Container, building: MapBuilding, hovered: boolean) {
   const g = new Graphics()
-  const tier = building.healthState === 'healthy' ? 3 : 1 // simplified
+  const tier = building.visualTier
   const width = 20 + tier * 6
   const height = 24 + tier * 8
 
@@ -282,19 +385,30 @@ function drawPortfolioBuilding(
   hovered: boolean,
 ) {
   const g = new Graphics()
-  const width = 16
-  const height = 18
+  // Scale procedural fallback with visual tier so big companies read as bigger.
+  const width = 14 + building.visualTier * 3
+  const height = 16 + building.visualTier * 3
+
+  // Sector palette gives each sector its own silhouette color, tinted by health.
+  const palette = building.sectorTyped ? SECTOR_PALETTE[building.sectorTyped] : null
+  const wallColor = palette?.primary ?? color
+  const roofColor = palette?.roof ?? color
+  const healthTint = HEALTH_TINT[building.healthState]
 
   // Main structure
   g.rect(-width / 2, -height, width, height)
-  g.fill({ color, alpha: hovered ? Math.min(1, alpha + 0.2) : alpha })
-  g.stroke({ width: 1, color, alpha: Math.min(1, alpha + 0.2) })
+  g.fill({ color: wallColor, alpha: hovered ? Math.min(1, alpha + 0.2) : alpha })
+  g.stroke({ width: 1, color: healthTint ?? color, alpha: Math.min(1, alpha + 0.2) })
+
+  // Roof cap in sector accent
+  g.rect(-width / 2 - 1, -height - 3, width + 2, 3)
+  g.fill({ color: roofColor, alpha })
 
   // Windows (2 rows, 2 cols)
   const isLit = building.healthState === 'healthy' || building.healthState === 'stressed'
   for (let row = 0; row < 2; row++) {
     for (let col = 0; col < 2; col++) {
-      g.rect(-width / 2 + 2 + col * 8, -height + 3 + row * 8, 4, 4)
+      g.rect(-width / 2 + 2 + col * (width / 2), -height + 3 + row * (height / 2.5), 3, 3)
       g.fill({ color: isLit ? COLORS.window : COLORS.windowOff, alpha: isLit ? 0.7 : 0.3 })
     }
   }

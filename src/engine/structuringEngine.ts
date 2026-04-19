@@ -3,6 +3,7 @@ import type { PortfolioCompany } from '../types/company'
 import type { CapitalStructure } from '../types/effects'
 import type { Difficulty } from '../types/game'
 import { createDefaultConsequenceLedger } from './consequenceEngine'
+import { deriveVisualsForCompany } from './portraitAssigner'
 
 export const MAX_SENIOR_LEVERAGE: Record<Difficulty, number> = {
   Easy: 4.5,
@@ -206,8 +207,12 @@ export function createPortfolioCompanyFromDeal(
     Math.min(82, 56 + Math.round(structure.managementRolloverPct * 50) + (deal.managementQuality - 5) * 2),
   )
 
+  const id = `co-${deal.id}`
+  const employeeCount = deal.employeeCount ?? Math.round(deal.actualRevenue * 5)
+  const visuals = deriveVisualsForCompany(id, deal.sector, deal.actualRevenue, employeeCount)
+
   return {
-    id: `co-${deal.id}`,
+    id,
     name: deal.name,
     sector: deal.sector,
     subSector: deal.subSector,
@@ -224,7 +229,7 @@ export function createPortfolioCompanyFromDeal(
     leverageRatio: structCalc.totalLeverage,
     interestCoverage: structCalc.interestCoverage,
     covenantEbitdaThreshold: structCalc.covenantEbitdaFloor,
-    employeeCount: deal.employeeCount ?? Math.round(deal.actualRevenue * 5),
+    employeeCount,
     morale: baseMorale,
     customerSatisfaction: 70,
     communityTrust: baseCommunityTrust,
@@ -247,5 +252,7 @@ export function createPortfolioCompanyFromDeal(
     dividendRecapTotal: 0,
     consequenceLedger: createDefaultConsequenceLedger(),
     exitInProgress: null,
+    visualTier: visuals.visualTier,
+    buildingVariant: visuals.buildingVariant,
   }
 }

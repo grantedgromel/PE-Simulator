@@ -46,4 +46,7 @@ export interface Deal {
   // Financials for structuring
   enterpriseValue: number
   assignedPrincipalId?: string
+  // Visual presentation — deterministic per deal id; safe to derive if missing.
+  sellerPortraitSeed: number
+  buildingVariant: number
 }

@@ -43,4 +43,6 @@ export interface TeamMember {
   hireSource: HireSource
   salaryCostPerQuarter: number
   consecutiveMaxCapacityQuarters: number
+  // Visual presentation — deterministic per member id; safe to derive if missing.
+  portraitSeed: number
 }

@@ -2,6 +2,7 @@ import type { TeamMember, TeamRole, SectorExpertise } from '../types/team'
 import type { Sector, Difficulty } from '../types/game'
 import type { PortfolioCompany } from '../types/company'
 import { PRNG } from './prng'
+import { hashStringSeed } from './portraitAssigner'
 
 // === NAME GENERATION ===
 
@@ -43,8 +44,9 @@ function generateSectorExpertise(prng: PRNG, primarySector: Sector, primaryRange
 }
 
 export function generateStartingTeam(prng: PRNG, sector: Sector): TeamMember[] {
+  const principalId = `tm-principal-${prng.nextInt(1000, 9999)}`
   const principal: TeamMember = {
-    id: `tm-principal-${prng.nextInt(1000, 9999)}`,
+    id: principalId,
     name: generateTeamName(prng),
     role: 'Principal',
     skills: {
@@ -64,10 +66,12 @@ export function generateStartingTeam(prng: PRNG, sector: Sector): TeamMember[] {
     hireSource: 'InternalPromotion',
     salaryCostPerQuarter: prng.nextFloat(0.3, 0.5),
     consecutiveMaxCapacityQuarters: 0,
+    portraitSeed: hashStringSeed(principalId),
   }
 
+  const opId = `tm-op-${prng.nextInt(1000, 9999)}`
   const op: TeamMember = {
-    id: `tm-op-${prng.nextInt(1000, 9999)}`,
+    id: opId,
     name: generateTeamName(prng),
     role: 'OperatingPartner',
     skills: {
@@ -87,10 +91,12 @@ export function generateStartingTeam(prng: PRNG, sector: Sector): TeamMember[] {
     hireSource: 'ExternalHire',
     salaryCostPerQuarter: prng.nextFloat(0.25, 0.4),
     consecutiveMaxCapacityQuarters: 0,
+    portraitSeed: hashStringSeed(opId),
   }
 
+  const vpId = `tm-vp-${prng.nextInt(1000, 9999)}`
   const vp: TeamMember = {
-    id: `tm-vp-${prng.nextInt(1000, 9999)}`,
+    id: vpId,
     name: generateTeamName(prng),
     role: 'VP',
     skills: {
@@ -110,10 +116,12 @@ export function generateStartingTeam(prng: PRNG, sector: Sector): TeamMember[] {
     hireSource: 'ExternalHire',
     salaryCostPerQuarter: prng.nextFloat(0.1, 0.2),
     consecutiveMaxCapacityQuarters: 0,
+    portraitSeed: hashStringSeed(vpId),
   }
 
+  const assocId = `tm-assoc-${prng.nextInt(1000, 9999)}`
   const associate: TeamMember = {
-    id: `tm-assoc-${prng.nextInt(1000, 9999)}`,
+    id: assocId,
     name: generateTeamName(prng),
     role: 'Associate',
     skills: {
@@ -133,6 +141,7 @@ export function generateStartingTeam(prng: PRNG, sector: Sector): TeamMember[] {
     hireSource: 'ExternalHire',
     salaryCostPerQuarter: prng.nextFloat(0.05, 0.1),
     consecutiveMaxCapacityQuarters: 0,
+    portraitSeed: hashStringSeed(assocId),
   }
 
   return [principal, op, vp, associate]
@@ -360,8 +369,9 @@ export function generateHireCandidates(
     const baseMin = role === 'Principal' ? 4 : role === 'OperatingPartner' ? 4 : role === 'VP' ? 3 : 1
     const baseMax = baseMin + 3 + qualityBonus
 
+    const hireId = `tm-hire-${prng.nextInt(10000, 99999)}`
     const tm: TeamMember = {
-      id: `tm-hire-${prng.nextInt(10000, 99999)}`,
+      id: hireId,
       name: generateTeamName(prng),
       role,
       skills: {
@@ -381,6 +391,7 @@ export function generateHireCandidates(
       hireSource: 'ExternalHire',
       salaryCostPerQuarter: role === 'Principal' ? prng.nextFloat(0.4, 0.6) : role === 'OperatingPartner' ? prng.nextFloat(0.3, 0.5) : role === 'VP' ? prng.nextFloat(0.15, 0.25) : prng.nextFloat(0.08, 0.12),
       consecutiveMaxCapacityQuarters: 0,
+      portraitSeed: hashStringSeed(hireId),
     }
     candidates.push(tm)
   }

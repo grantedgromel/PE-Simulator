@@ -1,6 +1,26 @@
 import type { GameState } from '../types/game'
+import {
+  withCompanyVisuals,
+  withTeamMemberVisuals,
+  withDealVisuals,
+} from '../engine/portraitAssigner'
 
 const SAVE_KEY_PREFIX = 'pe-simulator-save-'
+
+/**
+ * Backfill fields added after initial release so old saves still load cleanly.
+ * Keep this list small and deterministic; never invent gameplay values here.
+ */
+function migrateLoadedState(state: GameState): GameState {
+  return {
+    ...state,
+    portfolioCompanies: state.portfolioCompanies.map(withCompanyVisuals),
+    exitedCompanies: state.exitedCompanies.map(withCompanyVisuals),
+    writtenOffCompanies: state.writtenOffCompanies.map(withCompanyVisuals),
+    teamMembers: state.teamMembers.map(withTeamMemberVisuals),
+    currentDeals: state.currentDeals.map(withDealVisuals),
+  }
+}
 
 export interface SaveMetadata {
   slot: number
@@ -35,7 +55,7 @@ export function loadFromSlot(slot: number): GameState | null {
   try {
     const data = localStorage.getItem(`${SAVE_KEY_PREFIX}${slot}`)
     if (!data) return null
-    return JSON.parse(data) as GameState
+    return migrateLoadedState(JSON.parse(data) as GameState)
   } catch {
     console.error('Failed to load game')
     return null

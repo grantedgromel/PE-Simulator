@@ -2,6 +2,7 @@ import type { Sector } from '../types/game'
 import type { Deal, DealSource } from '../types/deal'
 import { PRNG } from './prng'
 import { generateCompanyName, getRandomSubSector, getRandomDescription } from './nameGenerators'
+import { deriveVisualsForDeal } from './portraitAssigner'
 
 interface DealGenParams {
   sector: Sector
@@ -150,8 +151,11 @@ function generateSingleDeal(prng: PRNG, params: DealGenParams): Deal {
 
   const ev = actualEbitda * baseMultiple
 
+  const id = `deal-${Date.now()}-${prng.nextInt(1000, 9999)}`
+  const visuals = deriveVisualsForDeal(id, params.sector)
+
   return {
-    id: `deal-${Date.now()}-${prng.nextInt(1000, 9999)}`,
+    id,
     name,
     sector: params.sector,
     subSector,
@@ -181,6 +185,8 @@ function generateSingleDeal(prng: PRNG, params: DealGenParams): Deal {
     diligenceCost: 0,
     enterpriseValue: Math.round(ev * 100) / 100,
     assignedPrincipalId: undefined,
+    sellerPortraitSeed: visuals.sellerPortraitSeed,
+    buildingVariant: visuals.buildingVariant,
   }
 }
 
