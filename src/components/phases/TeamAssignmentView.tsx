@@ -1,6 +1,8 @@
 import { useGameStore } from '../../store/gameStore'
 import { PhaseBrief } from '../shared/PhaseBrief'
 import { PHASE_BRIEFS } from '../../data/phaseBriefs'
+import { Portrait } from '../shared/Portrait'
+import { SectorIcon } from '../shared/SectorIcon'
 
 export function TeamAssignmentView() {
   const {
@@ -33,16 +35,32 @@ export function TeamAssignmentView() {
 
               return (
                 <div key={teamMember.id} className="rounded border border-terminal-border bg-terminal-surface p-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-terminal-white">{teamMember.name}</span>
-                      <span className="ml-2 text-xs text-terminal-muted">{teamMember.role}</span>
-                      {teamMember.status === 'BurnedOut' && <span className="ml-2 text-xs text-terminal-red">BURNED OUT</span>}
-                    </div>
-                    <span className={`text-xs font-mono ${utilizationColor}`}>
-                      {teamMember.currentAssignments.length}/{teamMember.capacity}
-                    </span>
-                  </div>
+                  <div className="flex items-start gap-3">
+                    <Portrait
+                      subject={{ kind: 'team', role: teamMember.role, seed: teamMember.portraitSeed }}
+                      size={40}
+                      rounded="full"
+                      ringColor={
+                        teamMember.status === 'BurnedOut'
+                          ? '#ff4444'
+                          : utilization >= 1
+                            ? '#ff4444'
+                            : utilization > 0
+                              ? '#ffb700'
+                              : '#00ff88'
+                      }
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium text-terminal-white">{teamMember.name}</span>
+                          <span className="ml-2 text-xs text-terminal-muted">{teamMember.role}</span>
+                          {teamMember.status === 'BurnedOut' && <span className="ml-2 text-xs text-terminal-red">BURNED OUT</span>}
+                        </div>
+                        <span className={`text-xs font-mono whitespace-nowrap ${utilizationColor}`}>
+                          {teamMember.currentAssignments.length}/{teamMember.capacity}
+                        </span>
+                      </div>
 
                   <div className="mt-1 flex gap-3 text-[10px] text-terminal-muted">
                     <span>Src: <span className="text-terminal-white">{Math.round(teamMember.skills.dealSourcing)}</span></span>
@@ -78,6 +96,8 @@ export function TeamAssignmentView() {
                       PROMOTE to {teamMember.role === 'Associate' ? 'VP' : 'Principal'}
                     </button>
                   )}
+                    </div>
+                  </div>
                 </div>
               )
             })}
@@ -121,22 +141,39 @@ export function TeamAssignmentView() {
 
                   return (
                     <div key={deal.id} className="rounded border border-terminal-border bg-terminal-surface p-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-terminal-white">{deal.name}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className="text-terminal-muted flex-shrink-0" title={deal.sector}>
+                            <SectorIcon sector={deal.sector} size={14} />
+                          </span>
+                          <span className="text-xs text-terminal-white truncate">{deal.name}</span>
+                        </span>
                         {assignedPrincipal ? (
-                          <span className="text-xs font-mono text-terminal-green">{assignedPrincipal.name}</span>
+                          <span className="flex items-center gap-1.5 text-xs font-mono text-terminal-green">
+                            <Portrait
+                              subject={{ kind: 'team', role: assignedPrincipal.role, seed: assignedPrincipal.portraitSeed }}
+                              size={22}
+                              rounded="full"
+                            />
+                            {assignedPrincipal.name}
+                          </span>
                         ) : (
                           <span className="text-xs font-mono text-terminal-red">UNASSIGNED</span>
                         )}
                       </div>
                       {!assignedPrincipal && availablePrincipals.length > 0 && (
-                        <div className="mt-1 flex gap-1">
+                        <div className="mt-1 flex flex-wrap gap-1">
                           {availablePrincipals.map((principal) => (
                             <button
                               key={principal.id}
                               onClick={() => assignTeamMember(principal.id, deal.id)}
-                              className="rounded border border-terminal-green/30 bg-terminal-green/10 px-2 py-0.5 text-[10px] text-terminal-green hover:bg-terminal-green/20"
+                              className="flex items-center gap-1.5 rounded border border-terminal-green/30 bg-terminal-green/10 px-2 py-0.5 text-[10px] text-terminal-green hover:bg-terminal-green/20"
                             >
+                              <Portrait
+                                subject={{ kind: 'team', role: principal.role, seed: principal.portraitSeed }}
+                                size={18}
+                                rounded="full"
+                              />
                               {principal.name} (D:{Math.round(principal.skills.diligence)})
                             </button>
                           ))}
@@ -167,10 +204,20 @@ export function TeamAssignmentView() {
 
                   return (
                     <div key={company.id} className="rounded border border-terminal-border bg-terminal-surface p-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-terminal-white">{company.name}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className="text-terminal-muted flex-shrink-0" title={company.sector}>
+                            <SectorIcon sector={company.sector} size={14} />
+                          </span>
+                          <span className="text-xs text-terminal-white truncate">{company.name}</span>
+                        </span>
                         {assignedOperatingPartner ? (
-                          <span className="text-xs font-mono text-terminal-green">
+                          <span className="flex items-center gap-1.5 text-xs font-mono text-terminal-green whitespace-nowrap">
+                            <Portrait
+                              subject={{ kind: 'team', role: assignedOperatingPartner.role, seed: assignedOperatingPartner.portraitSeed }}
+                              size={22}
+                              rounded="full"
+                            />
                             {assignedOperatingPartner.name} ({company.sector}: {Math.round(assignedOperatingPartner.skills.sectorExpertise[company.sector])})
                           </span>
                         ) : (
@@ -178,13 +225,18 @@ export function TeamAssignmentView() {
                         )}
                       </div>
                       {!assignedOperatingPartner && availableOperatingPartners.length > 0 && (
-                        <div className="mt-1 flex gap-1">
+                        <div className="mt-1 flex flex-wrap gap-1">
                           {availableOperatingPartners.map((operatingPartner) => (
                             <button
                               key={operatingPartner.id}
                               onClick={() => assignTeamMember(operatingPartner.id, company.id)}
-                              className="rounded border border-terminal-green/30 bg-terminal-green/10 px-2 py-0.5 text-[10px] text-terminal-green hover:bg-terminal-green/20"
+                              className="flex items-center gap-1.5 rounded border border-terminal-green/30 bg-terminal-green/10 px-2 py-0.5 text-[10px] text-terminal-green hover:bg-terminal-green/20"
                             >
+                              <Portrait
+                                subject={{ kind: 'team', role: operatingPartner.role, seed: operatingPartner.portraitSeed }}
+                                size={18}
+                                rounded="full"
+                              />
                               {operatingPartner.name} (Ops:{Math.round(operatingPartner.skills.operationalExecution)}, {company.sector}:{Math.round(operatingPartner.skills.sectorExpertise[company.sector])})
                             </button>
                           ))}

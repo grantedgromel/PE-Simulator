@@ -275,6 +275,12 @@ function drawBuilding(
     buildingContainer.addChild(opLabel)
   }
 
+  // Sector badge (portfolio buildings only) — a small colored chip with a 2-letter code
+  // floated above the building so you can scan sectors at-a-glance even when sprites are missing.
+  if (!building.isHQ && building.sectorTyped) {
+    drawSectorBadge(buildingContainer, building.sectorTyped, building.healthState)
+  }
+
   // Add-on indicators
   if (building.addOnCount > 0 && !cachedSprite) {
     const color = HEALTH_COLORS[building.healthState] ?? COLORS.exited
@@ -314,6 +320,42 @@ function firstCachedSprite(paths: string[]) {
     if (tex) return tex
   }
   return null
+}
+
+const SECTOR_BADGE_CODE: Record<import('../../types/game').Sector, string> = {
+  Healthcare: 'HC',
+  BusinessServices: 'BS',
+  Consumer: 'CN',
+  Technology: 'TC',
+  Industrial: 'IN',
+}
+
+function drawSectorBadge(
+  container: Container,
+  sector: import('../../types/game').Sector,
+  healthState: HealthState,
+) {
+  const palette = SECTOR_PALETTE[sector]
+  const alpha = healthState === 'exited' ? 0.4 : healthState === 'destroyed' ? 0.2 : 0.92
+
+  const chip = new Graphics()
+  chip.roundRect(-12, -44, 24, 12, 3)
+  chip.fill({ color: palette.primary, alpha })
+  chip.stroke({ width: 1, color: palette.roof, alpha })
+
+  const textStyle = new TextStyle({
+    fontSize: 8,
+    fill: 0x0a0a0f,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+  })
+  const label = new Text({ text: SECTOR_BADGE_CODE[sector], style: textStyle })
+  label.anchor.set(0.5, 0.5)
+  label.y = -38
+  label.alpha = alpha
+
+  container.addChild(chip)
+  container.addChild(label)
 }
 
 function ensureSpriteLoaded(paths: string[], onReady: () => void) {
