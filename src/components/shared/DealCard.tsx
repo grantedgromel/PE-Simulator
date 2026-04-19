@@ -1,6 +1,7 @@
 import type { Deal } from '../../types/deal'
 import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple } from '../../utils/formatters'
+import { Portrait } from './Portrait'
 
 interface DealCardProps {
   deal: Deal
@@ -37,12 +38,20 @@ export function DealCard({ deal, canPursue }: DealCardProps) {
       }`}
     >
       {/* Header */}
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="text-terminal-white font-medium text-sm">{deal.name}</h3>
-          <p className="text-terminal-muted text-xs mt-0.5">{deal.subSector}</p>
+      <div className="flex justify-between items-start mb-3 gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <Portrait
+            subject={{ kind: 'npc', characterType: 'Seller', seed: deal.sellerPortraitSeed }}
+            size={40}
+            rounded="full"
+            title={`Seller — ${deal.name}`}
+          />
+          <div className="min-w-0">
+            <h3 className="text-terminal-white font-medium text-sm truncate">{deal.name}</h3>
+            <p className="text-terminal-muted text-xs mt-0.5">{deal.subSector}</p>
+          </div>
         </div>
-        <span className={`text-[10px] font-mono ${sourceLabel.color}`}>
+        <span className={`text-[10px] font-mono whitespace-nowrap ${sourceLabel.color}`}>
           {sourceLabel.text}
         </span>
       </div>

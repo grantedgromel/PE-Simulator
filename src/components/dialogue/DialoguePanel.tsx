@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ActiveDialogue } from '../../engine/dialogueEngine'
 import { resolveText, getAvailableResponses, advanceDialogue } from '../../engine/dialogueEngine'
-import { renderPortraitSVG, generatePortraitConfig } from '../../engine/portraitGenerator'
 import { useGameStore } from '../../store/gameStore'
+import { Portrait } from '../shared/Portrait'
+import type { CharacterType, Expression } from '../../types/npc'
 
 interface DialoguePanelProps {
   dialogue: ActiveDialogue
@@ -64,10 +65,6 @@ export function DialoguePanel({ dialogue, onComplete, onDismiss }: DialoguePanel
 
   if (!node) return null
 
-  // Generate portrait
-  const portraitConfig = generatePortraitConfig(dialogue.character.portraitSeed)
-  const portraitSVG = renderPortraitSVG(portraitConfig, dialogue.character.expression, dialogue.character.characterType)
-
   const hintIcons: Record<string, string> = {
     cooperative: '🤝',
     aggressive: '⚔',
@@ -85,9 +82,15 @@ export function DialoguePanel({ dialogue, onComplete, onDismiss }: DialoguePanel
         <div className="flex p-4 gap-4">
           {/* Portrait */}
           <div className="flex-shrink-0 w-32">
-            <div
-              className="w-32 h-32 rounded border border-terminal-border overflow-hidden"
-              dangerouslySetInnerHTML={{ __html: portraitSVG }}
+            <Portrait
+              subject={{
+                kind: 'npc',
+                characterType: dialogue.character.characterType as CharacterType,
+                seed: dialogue.character.portraitSeed,
+                expression: dialogue.character.expression as Expression,
+              }}
+              size={128}
+              rounded="md"
             />
             <div className="mt-2 text-center">
               <div className="text-xs text-terminal-green font-mono">{dialogue.character.name}</div>

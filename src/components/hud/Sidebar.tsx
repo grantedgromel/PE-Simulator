@@ -6,6 +6,8 @@ import {
   getSourcingCapacity,
   getStaffedPortfolioCompanyIds,
 } from '../../engine/turnPressure'
+import { Portrait } from '../shared/Portrait'
+import type { TeamMember } from '../../types/team'
 
 export function Sidebar() {
   const { fund, portfolioCompanies, currentDeals, totalQuartersElapsed, teamMembers } = useGameStore()
@@ -64,6 +66,22 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Team roster */}
+      <div className="p-4 border-b border-terminal-border">
+        <h3 className="text-xs font-mono text-terminal-amber uppercase tracking-wider mb-3">
+          Team ({teamMembers.filter((tm) => tm.status === 'Active').length})
+        </h3>
+        {teamMembers.length === 0 ? (
+          <p className="text-xs text-terminal-muted italic">No team yet</p>
+        ) : (
+          <div className="grid grid-cols-4 gap-2">
+            {teamMembers.map((tm) => (
+              <TeamRosterTile key={tm.id} member={tm} />
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Portfolio */}
       <div className="p-4 flex-1">
         <h3 className="text-xs font-mono text-terminal-amber uppercase tracking-wider mb-3">
@@ -103,6 +121,45 @@ function SidebarMetric({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between items-center text-xs">
       <span className="text-terminal-muted">{label}</span>
       <span className="font-mono text-terminal-white">{value}</span>
+    </div>
+  )
+}
+
+const ROLE_ABBR: Record<TeamMember['role'], string> = {
+  Principal: 'P',
+  OperatingPartner: 'OP',
+  VP: 'VP',
+  Associate: 'A',
+  PlacementAgent: 'PA',
+}
+
+function TeamRosterTile({ member }: { member: TeamMember }) {
+  const ringColor =
+    member.status !== 'Active'
+      ? '#6b6b7b'
+      : member.currentAssignments.length >= member.capacity
+        ? '#ff4444'
+        : member.currentAssignments.length > 0
+          ? '#ffb700'
+          : '#00ff88'
+
+  return (
+    <div
+      className="flex flex-col items-center text-center"
+      title={`${member.name} · ${member.role} · ${member.currentAssignments.length}/${member.capacity} assignments · morale ${member.morale}`}
+    >
+      <Portrait
+        subject={{ kind: 'team', role: member.role, seed: member.portraitSeed }}
+        size={44}
+        rounded="full"
+        ringColor={ringColor}
+      />
+      <div className="mt-1 text-[9px] font-mono text-terminal-muted uppercase tracking-wider">
+        {ROLE_ABBR[member.role]}
+      </div>
+      <div className="text-[9px] text-terminal-white truncate w-full">
+        {member.name.split(' ')[0]}
+      </div>
     </div>
   )
 }
