@@ -22,7 +22,7 @@ import {
   type AddOnTarget,
 } from '../engine/operationsEngine'
 import { calculateExitOptions, initiateExit } from '../engine/exitEngine'
-import { promoteTeamMember as promoteTeamMemberFn } from '../engine/teamEngine'
+import { getDiligenceModifier, promoteTeamMember as promoteTeamMemberFn } from '../engine/teamEngine'
 import { createNextFundState } from '../engine/initialState'
 import { calculatePersonalCarry } from '../engine/carryWaterfall'
 import { createFundRecord, calculateFinalScore } from '../engine/fundraisingEngine'
@@ -31,6 +31,11 @@ import { advanceDialogue as advanceDialogueEngine } from '../engine/dialogueEngi
 import { getDialogueTree, generateCharacterForContext } from '../data/dialogueTrees'
 import { PRNG } from '../engine/prng'
 import { saveToSlot, loadFromSlot } from '../utils/saveLoad'
+import { ensureCompanyConsequences } from '../engine/consequenceEngine'
+import {
+  getOperationBlockReason,
+  getSourcingCapacity,
+} from '../engine/turnPressure'
 
 interface SetupState {
   fundName: string
@@ -222,18 +227,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   updateDealStatus: (dealId, status) =>
-    set((s) => ({
-      currentDeals: s.currentDeals.map((d) => d.id === dealId ? { ...d, status } : d),
-    })),
+    set((s) => {
+      if (status === 'Pursued') {
+        const sourcingCapacity = getSourcingCapacity(s.teamMembers)
+        const pursuedDeals = s.currentDeals.filter((d) => d.status === 'Pursued' && d.id !== dealId).length
+        if (pursuedDeals >= sourcingCapacity) {
+          return {}
+        }
+      }
+
+      return {
+        currentDeals: s.currentDeals.map((d) => d.id === dealId ? { ...d, status } : d),
+      }
+    }),
 
   // Diligence
   runDiligence: (dealId, targetLevel) => {
     const state = get()
     const deal = state.currentDeals.find((d) => d.id === dealId)
     if (!deal) return
-    const { deal: updated, cost } = performDiligence(deal, targetLevel)
+    const diligenceModifier = getDiligenceModifier(dealId, state.teamMembers, state.difficulty)
+    const bonusLevel = diligenceModifier.additionalReveal && targetLevel >= 3 ? 1 : 0
+    const effectiveTargetLevel = Math.min(5, targetLevel + bonusLevel)
+    const { deal: updated, cost: baseCost } = performDiligence(deal, effectiveTargetLevel)
+    const costMultiplier = Math.max(
+      0.8,
+      Math.min(
+        1.12,
+        1 - (diligenceModifier.accuracyBonus * 0.75) - (diligenceModifier.effectiveLevelBonus * 0.08)
+          + (diligenceModifier.unreliableInfo ? 0.06 : 0),
+      ),
+    )
+    const cost = Math.round(baseCost * costMultiplier * 100) / 100
+    const updatedDeal = {
+      ...updated,
+      diligenceCost: Math.round(((deal.diligenceCost ?? 0) + cost) * 100) / 100,
+    }
     set({
-      currentDeals: state.currentDeals.map((d) => d.id === dealId ? updated : d),
+      currentDeals: state.currentDeals.map((d) => d.id === dealId ? updatedDeal : d),
       fund: { ...state.fund, remainingCapital: Math.round((state.fund.remainingCapital - cost) * 100) / 100 },
     })
   },
@@ -302,7 +333,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const structCalc = calculateCapitalStructure(tev, ebitda, fullStructure, state.difficulty)
     if (!structCalc.isValid || structCalc.fundEquity > state.fund.remainingCapital) return
 
-    const newCompany = createPortfolioCompanyFromDeal(deal, fullStructure, structCalc, state.currentYear, state.currentQuarter)
+    const newCompany = createPortfolioCompanyFromDeal(deal, fullStructure, structCalc)
 
     set({
       portfolioCompanies: [...state.portfolioCompanies, newCompany],
@@ -322,10 +353,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get()
     const company = state.portfolioCompanies.find((c) => c.id === companyId)
     if (!company) return
-    const prng = new PRNG(state.seed + state.prngCounter + state.totalQuartersElapsed + companyId.length)
-    const result = executeOperationsAction(prng, company, action, state.totalQuartersElapsed, state.currentYear)
+    const blockReason = getOperationBlockReason(
+      company,
+      action,
+      state.teamMembers,
+      state.portfolioCompanies,
+      state.totalQuartersElapsed,
+    )
+    if (blockReason) return
 
-    let fundUpdate = { ...state.fund }
+    const prng = new PRNG(state.seed + state.prngCounter + state.totalQuartersElapsed + companyId.length)
+    const result = executeOperationsAction(
+      prng,
+      company,
+      action,
+      state.totalQuartersElapsed,
+      state.currentYear,
+      state.teamMembers,
+    )
+
+    const fundUpdate = { ...state.fund }
     if (result.fundCashImpact) {
       fundUpdate.remainingCapital = Math.round((fundUpdate.remainingCapital + result.fundCashImpact) * 100) / 100
     }
@@ -357,10 +404,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get()
     const company = state.portfolioCompanies.find((c) => c.id === companyId)
     if (!company) return
-    const prng = new PRNG(state.seed + state.prngCounter + state.totalQuartersElapsed + target.id.length)
-    const result = executeAddOn(prng, company, target, state.totalQuartersElapsed, state.currentYear)
+    const blockReason = getOperationBlockReason(
+      company,
+      'AddOnAcquisition',
+      state.teamMembers,
+      state.portfolioCompanies,
+      state.totalQuartersElapsed,
+    )
+    if (blockReason) return
 
-    let fundUpdate = { ...state.fund }
+    const prng = new PRNG(state.seed + state.prngCounter + state.totalQuartersElapsed + target.id.length)
+    const result = executeAddOn(
+      prng,
+      company,
+      target,
+      state.totalQuartersElapsed,
+      state.currentYear,
+      state.teamMembers,
+    )
+
+    const fundUpdate = { ...state.fund }
     if (result.fundCashImpact) {
       fundUpdate.remainingCapital = Math.round((fundUpdate.remainingCapital + result.fundCashImpact) * 100) / 100
     }
@@ -379,6 +442,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get()
     const company = state.portfolioCompanies.find((c) => c.id === companyId)
     if (!company) return
+    const blockReason = getOperationBlockReason(
+      company,
+      'DividendRecap',
+      state.teamMembers,
+      state.portfolioCompanies,
+      state.totalQuartersElapsed,
+    )
+    if (blockReason) return
+
     const result = executeDividendRecap(company, amount, state.totalQuartersElapsed, state.currentYear)
 
     set({
@@ -397,7 +469,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const company = state.portfolioCompanies.find((c) => c.id === choice.companyId)
     if (!company) return
 
-    let updated = { ...company, covenantChoicePending: false }
+    const updated = { ...company, covenantChoicePending: false }
 
     switch (choice.type) {
       case 'negotiate_waiver': {
@@ -550,7 +622,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((s) => {
       const member = s.teamMembers.find((tm) => tm.id === memberId)
       if (!member) return {}
-      let updated = { ...member }
+      const updated = { ...member }
       if (choice === 'lighten') {
         updated.currentAssignments = updated.currentAssignments.slice(0, 1)
         updated.consecutiveMaxCapacityQuarters = 0
@@ -722,7 +794,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   loadGame: (slot) => {
     const saved = loadFromSlot(slot)
     if (saved) {
-      set({ ...saved, screen: 'game', auctionResults: [], structuringDealId: null, addOnTargets: [], quarterEvents: [] })
+      set({
+        ...saved,
+        screen: 'game',
+        portfolioCompanies: saved.portfolioCompanies.map(ensureCompanyConsequences),
+        exitedCompanies: saved.exitedCompanies.map(ensureCompanyConsequences),
+        writtenOffCompanies: saved.writtenOffCompanies.map(ensureCompanyConsequences),
+        auctionResults: [],
+        structuringDealId: null,
+        addOnTargets: [],
+        quarterEvents: [],
+      })
       return true
     }
     return false

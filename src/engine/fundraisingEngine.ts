@@ -2,6 +2,13 @@ import type { Fund, FundraisingResult, FundRecord, FinalScore } from '../types/f
 import type { Difficulty } from '../types/game'
 import type { PortfolioCompany } from '../types/company'
 import type { ExitResult } from '../types/effects'
+import {
+  ensureCompanyConsequences,
+  getOwnershipArchetype,
+  getStakeholderOutcomeScore,
+  summarizeHumanConsequences,
+} from './consequenceEngine'
+import { getSectorPostExitFate } from '../data/sectorConsequenceFlavor'
 
 /**
  * Determine fundraising outcome based on fund track record.
@@ -80,33 +87,52 @@ export function generatePostExitFates(
 ): { companyName: string; fate: string }[] {
   // Simple deterministic selection based on company state at exit
   return exitedCompanies.map((co, i) => {
-    const healthy = co.morale > 50 && co.customerSatisfaction > 50 && co.revenueGrowthRate > 0
-    const stripMined = co.morale < 30 || co.customerSatisfaction < 30 || co.costCutCount >= 3
+    const hydrated = ensureCompanyConsequences(co)
+    const humanScore = getStakeholderOutcomeScore(hydrated)
+    const archetype = getOwnershipArchetype(hydrated)
+    const healthy = humanScore >= 65 && hydrated.revenueGrowthRate > 0
+    const stripMined =
+      humanScore < 35
+      || hydrated.communityTrust < 30
+      || hydrated.consequenceLedger.layoffs > Math.max(25, hydrated.employeeCount * 0.2)
     const hash = (seed + i * 7919) % 100
 
-    if (co.status === 'WrittenOff') {
+    if (hydrated.status === 'WrittenOff') {
       return {
-        companyName: co.name,
-        fate: `${co.name} was liquidated. Assets were sold to satisfy creditors. ${co.employeeCount} employees were let go.`,
+        companyName: hydrated.name,
+        fate: `${hydrated.name} was liquidated. Assets were sold to satisfy creditors. ${hydrated.employeeCount} employees were let go.`,
       }
     }
 
     if (healthy) {
-      if (hash < 60) return { companyName: co.name, fate: `${co.name} continued to grow under new ownership. Expanded operations significantly.` }
-      if (hash < 90) return { companyName: co.name, fate: `${co.name} was acquired by another PE fund and merged with a competitor.` }
-      return { companyName: co.name, fate: `${co.name} went through another round of cost-cutting under its new owners.` }
+      if (hash < 85) {
+        return {
+          companyName: hydrated.name,
+          fate: getSectorPostExitFate(hydrated, 'healthy', hash),
+        }
+      }
+      return { companyName: hydrated.name, fate: `${hydrated.name} became a case study in disciplined ownership. Even critics admitted the ${archetype.toLowerCase()} routine worked.` }
     }
 
     if (stripMined) {
-      if (hash < 40) return { companyName: co.name, fate: `${co.name} filed for Chapter 11 protection 18 months after your exit. ${co.employeeCount} employees affected.` }
-      if (hash < 70) return { companyName: co.name, fate: `${co.name} closed multiple locations under new management. Former employees blamed cost cuts.` }
-      if (hash < 90) return { companyName: co.name, fate: `${co.name}'s former CEO wrote a LinkedIn post titled "What I Learned From Being Acquired by PE." It has 47,000 likes.` }
-      return { companyName: co.name, fate: `${co.name} was acquired for parts. The brand no longer exists.` }
+      if (hash < 80) {
+        return {
+          companyName: hydrated.name,
+          fate: getSectorPostExitFate(hydrated, 'stripMined', hash),
+        }
+      }
+      if (hash < 92) return { companyName: hydrated.name, fate: `${hydrated.name}'s former CEO wrote a viral essay about life inside a ${archetype.toLowerCase()} asset. It did numbers.` }
+      return { companyName: hydrated.name, fate: `${hydrated.name} was acquired for parts. The brand no longer exists, but the debt model is still immaculate.` }
     }
 
     // Mixed health
-    if (hash < 50) return { companyName: co.name, fate: `${co.name} continued operating under new ownership with mixed results.` }
-    return { companyName: co.name, fate: `${co.name} was re-sold to a strategic acquirer within two years.` }
+    if (hash < 80) {
+      return {
+        companyName: hydrated.name,
+        fate: getSectorPostExitFate(hydrated, 'mixed', hash),
+      }
+    }
+    return { companyName: hydrated.name, fate: `${hydrated.name} was re-sold within two years. Buyers liked the EBITDA, but diligence kept circling back to culture and customer fatigue.` }
   })
 }
 
@@ -157,6 +183,7 @@ export function calculateFinalScore(
 
   const allCompanies = [...allExitedCompanies, ...allWrittenOff]
   const totalEmployees = allCompanies.reduce((s, c) => s + c.employeeCount, 0)
+  const consequenceSummary = summarizeHumanConsequences(allCompanies)
 
   // Return grade
   let returnGrade: FinalScore['returnGrade'] = 'F'
@@ -171,13 +198,15 @@ export function calculateFinalScore(
     ? allCompanies.reduce((s, c) => s + c.morale, 0) / allCompanies.length
     : 50
   const bankruptRate = allWrittenOff.length / Math.max(1, allCompanies.length)
+  const averageCommunityTrust = consequenceSummary.averageCommunityTrust
+  const averageHumanOutcomeScore = consequenceSummary.averageOutcomeScore
 
   let humanImpactGrade: FinalScore['humanImpactGrade'] = 'C'
-  if (avgMorale >= 60 && bankruptRate < 0.1) humanImpactGrade = 'S'
-  else if (avgMorale >= 50 && bankruptRate < 0.2) humanImpactGrade = 'A'
-  else if (avgMorale >= 45 && bankruptRate < 0.3) humanImpactGrade = 'B'
-  else if (bankruptRate >= 0.5) humanImpactGrade = 'F'
-  else if (bankruptRate >= 0.4 || avgMorale < 30) humanImpactGrade = 'D'
+  if (averageHumanOutcomeScore >= 75 && avgMorale >= 60 && bankruptRate < 0.1) humanImpactGrade = 'S'
+  else if (averageHumanOutcomeScore >= 62 && averageCommunityTrust >= 55 && bankruptRate < 0.2) humanImpactGrade = 'A'
+  else if (averageHumanOutcomeScore >= 48 && averageCommunityTrust >= 45 && bankruptRate < 0.3) humanImpactGrade = 'B'
+  else if (bankruptRate >= 0.5 || averageHumanOutcomeScore < 20) humanImpactGrade = 'F'
+  else if (bankruptRate >= 0.4 || avgMorale < 30 || averageCommunityTrust < 30) humanImpactGrade = 'D'
 
   return {
     funds: fundHistory,
@@ -186,6 +215,12 @@ export function calculateFinalScore(
     totalPersonalCarry: Math.round(totalPersonalCarry * 100) / 100,
     totalManagementFeeIncome: Math.round(totalFees * 100) / 100,
     totalEmployeesImpacted: totalEmployees,
+    totalLayoffs: consequenceSummary.totalLayoffs,
+    totalJobsAdded: consequenceSummary.totalJobsAdded,
+    totalExtractedCash: consequenceSummary.totalExtractedCash,
+    totalInvestedInBusinesses: consequenceSummary.totalInvestedCash,
+    averageCommunityTrust,
+    averageHumanOutcomeScore,
     returnGrade,
     humanImpactGrade,
   }

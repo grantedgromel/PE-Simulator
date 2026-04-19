@@ -1,5 +1,6 @@
 import type { PortfolioCompany } from '../../types/company'
 import { formatCurrency, formatMultiple, formatPercent } from '../../utils/formatters'
+import { getStakeholderOutcomeScore } from '../../engine/consequenceEngine'
 
 interface CompanyCardProps {
   company: PortfolioCompany
@@ -12,6 +13,13 @@ export function CompanyCard({ company }: CompanyCardProps) {
       : company.morale >= 40
         ? 'text-terminal-amber'
         : 'text-terminal-red'
+  const trustColor =
+    company.communityTrust >= 70
+      ? 'text-terminal-green'
+      : company.communityTrust >= 40
+        ? 'text-terminal-amber'
+        : 'text-terminal-red'
+  const humanScore = getStakeholderOutcomeScore(company)
 
   return (
     <div className="bg-terminal-surface border border-terminal-border rounded p-4">
@@ -32,6 +40,8 @@ export function CompanyCard({ company }: CompanyCardProps) {
         <CompanyStat label="Leverage" value={formatMultiple(company.leverageRatio)} />
         <CompanyStat label="Employees" value={String(company.employeeCount)} />
         <CompanyStat label="Morale" value={`${company.morale}`} className={moraleColor} />
+        <CompanyStat label="Trust" value={`${company.communityTrust}`} className={trustColor} />
+        <CompanyStat label="Human Score" value={`${humanScore}`} className={humanScore >= 60 ? 'text-terminal-green' : humanScore >= 40 ? 'text-terminal-amber' : 'text-terminal-red'} />
       </div>
     </div>
   )

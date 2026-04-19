@@ -1,11 +1,22 @@
 import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple, formatPercent } from '../../utils/formatters'
+import {
+  getOperationsExecutionBudget,
+  getOperationsExecutionSpent,
+  getSourcingCapacity,
+  getStaffedPortfolioCompanyIds,
+} from '../../engine/turnPressure'
 
 export function Sidebar() {
-  const { fund, portfolioCompanies, currentDeals, totalQuartersElapsed } = useGameStore()
+  const { fund, portfolioCompanies, currentDeals, totalQuartersElapsed, teamMembers } = useGameStore()
 
   const pursuedDeals = currentDeals.filter((d) => d.status === 'Pursued').length
   const availableDeals = currentDeals.filter((d) => d.status === 'Available').length
+  const activePortfolio = portfolioCompanies.filter((company) => company.status === 'Active')
+  const sourcingCapacity = getSourcingCapacity(teamMembers)
+  const executionBudget = getOperationsExecutionBudget(teamMembers, activePortfolio)
+  const executionSpent = getOperationsExecutionSpent(activePortfolio, totalQuartersElapsed)
+  const staffedCompanies = getStaffedPortfolioCompanyIds(teamMembers, activePortfolio)
 
   return (
     <div className="w-64 bg-terminal-surface border-l border-terminal-border flex flex-col overflow-y-auto flex-shrink-0">
@@ -39,6 +50,17 @@ export function Sidebar() {
         <div className="space-y-1">
           <SidebarMetric label="Available" value={String(availableDeals)} />
           <SidebarMetric label="Pursued" value={String(pursuedDeals)} />
+          <SidebarMetric label="Shortlist Cap" value={String(sourcingCapacity)} />
+        </div>
+      </div>
+
+      <div className="p-4 border-b border-terminal-border">
+        <h3 className="text-xs font-mono text-terminal-amber uppercase tracking-wider mb-3">
+          Quarter Pressure
+        </h3>
+        <div className="space-y-1">
+          <SidebarMetric label="Exec Budget" value={`${executionSpent}/${executionBudget}`} />
+          <SidebarMetric label="Staffed Assets" value={`${staffedCompanies.size}/${activePortfolio.length}`} />
         </div>
       </div>
 

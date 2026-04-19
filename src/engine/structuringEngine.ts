@@ -2,6 +2,7 @@ import type { Deal } from '../types/deal'
 import type { PortfolioCompany } from '../types/company'
 import type { CapitalStructure } from '../types/effects'
 import type { Difficulty } from '../types/game'
+import { createDefaultConsequenceLedger } from './consequenceEngine'
 
 export const MAX_SENIOR_LEVERAGE: Record<Difficulty, number> = {
   Easy: 4.5,
@@ -157,7 +158,6 @@ export function calculateSensitivityTable(
   growthRate: number,
   equityInvested: number,
   totalDebt: number,
-  _weightedAverageRate: number,
 ): SensitivityCell[][] {
   const exitMultiples = [6, 8, 10, 12]
   const holdYears = [3, 4, 5]
@@ -199,10 +199,12 @@ export function createPortfolioCompanyFromDeal(
   deal: Deal,
   structure: CapitalStructure,
   structCalc: StructureCalculation,
-  _currentYear: number,
-  _currentQuarter: number,
 ): PortfolioCompany {
   const baseMorale = 60 + Math.round(structure.managementRolloverPct * 60) // 60-78
+  const baseCommunityTrust = Math.max(
+    45,
+    Math.min(82, 56 + Math.round(structure.managementRolloverPct * 50) + (deal.managementQuality - 5) * 2),
+  )
 
   return {
     id: `co-${deal.id}`,
@@ -225,6 +227,7 @@ export function createPortfolioCompanyFromDeal(
     employeeCount: deal.employeeCount ?? Math.round(deal.actualRevenue * 5),
     morale: baseMorale,
     customerSatisfaction: 70,
+    communityTrust: baseCommunityTrust,
     fragility: 100 - deal.dealQuality * 10, // lower quality = higher fragility
     resilience: deal.dealQuality * 10,
     yearsHeld: 0,
@@ -242,6 +245,7 @@ export function createPortfolioCompanyFromDeal(
     covenantBreached: false,
     covenantChoicePending: false,
     dividendRecapTotal: 0,
+    consequenceLedger: createDefaultConsequenceLedger(),
     exitInProgress: null,
   }
 }

@@ -1,4 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
+import { PhaseBrief } from '../shared/PhaseBrief'
+import { PHASE_BRIEFS } from '../../data/phaseBriefs'
 
 export function TeamAssignmentView() {
   const {
@@ -6,80 +8,74 @@ export function TeamAssignmentView() {
     assignTeamMember, unassignTeamMember, promoteTeamMember,
   } = useGameStore()
 
-  const activeMembers = teamMembers.filter((tm) => tm.status === 'Active' || tm.status === 'BurnedOut')
-  const pursuedDeals = currentDeals.filter((d) => d.status === 'Pursued')
-  const activeCompanies = portfolioCompanies.filter((c) => c.status === 'Active')
+  const activeMembers = teamMembers.filter((teamMember) => teamMember.status === 'Active' || teamMember.status === 'BurnedOut')
+  const pursuedDeals = currentDeals.filter((deal) => deal.status === 'Pursued')
+  const activeCompanies = portfolioCompanies.filter((company) => company.status === 'Active')
 
   return (
     <div className="p-6 overflow-y-auto h-full">
-      <div className="mb-4">
-        <h2 className="text-sm font-mono text-terminal-amber uppercase tracking-widest">
-          Team Assignment
-        </h2>
-        <p className="text-xs text-terminal-muted mt-1">
-          Assign principals to deals and operating partners to portfolio companies.
-        </p>
-      </div>
+      <PhaseBrief {...PHASE_BRIEFS.teamAssignment} />
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* Left: Team Roster */}
+      <div className="mt-6 grid grid-cols-2 gap-6">
         <div>
-          <h3 className="text-xs font-mono text-terminal-muted uppercase mb-2">Team Roster</h3>
+          <h3 className="mb-2 text-xs font-mono uppercase text-terminal-muted">Team Roster</h3>
           <div className="space-y-2">
-            {activeMembers.map((tm) => {
-              const utilization = tm.currentAssignments.length / tm.capacity
-              const utilColor = utilization >= 1 ? 'text-terminal-red' : utilization >= 0.5 ? 'text-terminal-amber' : 'text-terminal-green'
-              const isPromotable = (tm.role === 'Associate' && tm.tenureQuarters >= 12 && tm.experienceLog.filter(e => e.type === 'deal_closed').length >= 3)
-                || (tm.role === 'VP' && tm.tenureQuarters >= 20 && tm.experienceLog.filter(e => e.type === 'exit_completed').length >= 2)
+            {activeMembers.map((teamMember) => {
+              const utilization = teamMember.currentAssignments.length / teamMember.capacity
+              const utilizationColor = utilization >= 1 ? 'text-terminal-red' : utilization >= 0.5 ? 'text-terminal-amber' : 'text-terminal-green'
+              const isPromotable =
+                (teamMember.role === 'Associate'
+                  && teamMember.tenureQuarters >= 12
+                  && teamMember.experienceLog.filter((entry) => entry.type === 'deal_closed').length >= 3)
+                || (teamMember.role === 'VP'
+                  && teamMember.tenureQuarters >= 20
+                  && teamMember.experienceLog.filter((entry) => entry.type === 'exit_completed').length >= 2)
 
               return (
-                <div key={tm.id} className="bg-terminal-surface border border-terminal-border rounded p-3">
-                  <div className="flex justify-between items-start">
+                <div key={teamMember.id} className="rounded border border-terminal-border bg-terminal-surface p-3">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-terminal-white text-sm font-medium">{tm.name}</span>
-                      <span className="text-terminal-muted text-xs ml-2">{tm.role}</span>
-                      {tm.status === 'BurnedOut' && <span className="text-terminal-red text-xs ml-2">BURNED OUT</span>}
+                      <span className="text-sm font-medium text-terminal-white">{teamMember.name}</span>
+                      <span className="ml-2 text-xs text-terminal-muted">{teamMember.role}</span>
+                      {teamMember.status === 'BurnedOut' && <span className="ml-2 text-xs text-terminal-red">BURNED OUT</span>}
                     </div>
-                    <span className={`text-xs font-mono ${utilColor}`}>
-                      {tm.currentAssignments.length}/{tm.capacity}
+                    <span className={`text-xs font-mono ${utilizationColor}`}>
+                      {teamMember.currentAssignments.length}/{teamMember.capacity}
                     </span>
                   </div>
 
-                  {/* Skills compact display */}
-                  <div className="flex gap-3 mt-1 text-[10px] text-terminal-muted">
-                    <span>Src: <span className="text-terminal-white">{Math.round(tm.skills.dealSourcing)}</span></span>
-                    <span>Dil: <span className="text-terminal-white">{Math.round(tm.skills.diligence)}</span></span>
-                    <span>Ops: <span className="text-terminal-white">{Math.round(tm.skills.operationalExecution)}</span></span>
-                    <span>Carry: <span className="text-terminal-white">{tm.carryAllocationPct.toFixed(1)}%</span></span>
+                  <div className="mt-1 flex gap-3 text-[10px] text-terminal-muted">
+                    <span>Src: <span className="text-terminal-white">{Math.round(teamMember.skills.dealSourcing)}</span></span>
+                    <span>Dil: <span className="text-terminal-white">{Math.round(teamMember.skills.diligence)}</span></span>
+                    <span>Ops: <span className="text-terminal-white">{Math.round(teamMember.skills.operationalExecution)}</span></span>
+                    <span>Carry: <span className="text-terminal-white">{teamMember.carryAllocationPct.toFixed(1)}%</span></span>
                   </div>
 
-                  {/* Assignments */}
-                  {tm.currentAssignments.length > 0 && (
+                  {teamMember.currentAssignments.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {tm.currentAssignments.map((aid) => {
-                        const dealName = currentDeals.find((d) => d.id === aid)?.name
-                        const coName = portfolioCompanies.find((c) => c.id === aid)?.name
+                      {teamMember.currentAssignments.map((assignmentId) => {
+                        const dealName = currentDeals.find((deal) => deal.id === assignmentId)?.name
+                        const companyName = portfolioCompanies.find((company) => company.id === assignmentId)?.name
                         return (
                           <span
-                            key={aid}
-                            className="text-[10px] bg-terminal-bg px-1.5 py-0.5 rounded text-terminal-muted cursor-pointer hover:text-terminal-red"
-                            onClick={() => unassignTeamMember(tm.id, aid)}
+                            key={assignmentId}
+                            className="cursor-pointer rounded bg-terminal-bg px-1.5 py-0.5 text-[10px] text-terminal-muted hover:text-terminal-red"
+                            onClick={() => unassignTeamMember(teamMember.id, assignmentId)}
                             title="Click to unassign"
                           >
-                            {dealName ?? coName ?? aid} ×
+                            {dealName ?? companyName ?? assignmentId} x
                           </span>
                         )
                       })}
                     </div>
                   )}
 
-                  {/* Promote button */}
                   {isPromotable && (
                     <button
-                      onClick={() => promoteTeamMember(tm.id)}
+                      onClick={() => promoteTeamMember(teamMember.id)}
                       className="mt-1 text-[10px] text-terminal-green hover:underline"
                     >
-                      PROMOTE to {tm.role === 'Associate' ? 'VP' : 'Principal'}
+                      PROMOTE to {teamMember.role === 'Associate' ? 'VP' : 'Principal'}
                     </button>
                   )}
                 </div>
@@ -87,60 +83,61 @@ export function TeamAssignmentView() {
             })}
           </div>
 
-          {/* Team P&L */}
-          <div className="mt-4 bg-terminal-bg rounded p-3 border border-terminal-border">
-            <h4 className="text-[10px] font-mono text-terminal-muted uppercase mb-1">Team Economics</h4>
-            <div className="text-xs space-y-0.5">
+          <div className="mt-4 rounded border border-terminal-border bg-terminal-bg p-3">
+            <h4 className="mb-1 text-[10px] font-mono uppercase text-terminal-muted">Team Economics</h4>
+            <div className="space-y-0.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-terminal-muted">Quarterly salary cost</span>
-                <span className="font-mono text-terminal-white">${activeMembers.reduce((s, tm) => s + tm.salaryCostPerQuarter, 0).toFixed(2)}M</span>
+                <span className="font-mono text-terminal-white">${activeMembers.reduce((sum, teamMember) => sum + teamMember.salaryCostPerQuarter, 0).toFixed(2)}M</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-terminal-muted">Total carry allocated</span>
-                <span className="font-mono text-terminal-white">{activeMembers.reduce((s, tm) => s + tm.carryAllocationPct, 0).toFixed(1)}%</span>
+                <span className="font-mono text-terminal-white">{activeMembers.reduce((sum, teamMember) => sum + teamMember.carryAllocationPct, 0).toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-terminal-muted">Your carry share</span>
-                <span className="font-mono text-terminal-green">{(100 - activeMembers.reduce((s, tm) => s + tm.carryAllocationPct, 0)).toFixed(1)}%</span>
+                <span className="font-mono text-terminal-green">{(100 - activeMembers.reduce((sum, teamMember) => sum + teamMember.carryAllocationPct, 0)).toFixed(1)}%</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Assignment Slots */}
         <div>
-          {/* Active Deals */}
           {pursuedDeals.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-xs font-mono text-terminal-muted uppercase mb-2">Active Deals — Assign Principal</h3>
+              <h3 className="mb-2 text-xs font-mono uppercase text-terminal-muted">Active Deals - Assign Principal</h3>
               <div className="space-y-2">
                 {pursuedDeals.map((deal) => {
                   const assignedPrincipal = teamMembers.find(
-                    (tm) => tm.role === 'Principal' && tm.currentAssignments.includes(deal.id)
+                    (teamMember) => teamMember.role === 'Principal' && teamMember.currentAssignments.includes(deal.id),
                   )
                   const availablePrincipals = teamMembers.filter(
-                    (tm) => tm.role === 'Principal' && tm.status === 'Active' && tm.currentAssignments.length < tm.capacity && !tm.currentAssignments.includes(deal.id)
+                    (teamMember) =>
+                      teamMember.role === 'Principal'
+                      && teamMember.status === 'Active'
+                      && teamMember.currentAssignments.length < teamMember.capacity
+                      && !teamMember.currentAssignments.includes(deal.id),
                   )
 
                   return (
-                    <div key={deal.id} className="bg-terminal-surface border border-terminal-border rounded p-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-terminal-white text-xs">{deal.name}</span>
+                    <div key={deal.id} className="rounded border border-terminal-border bg-terminal-surface p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-terminal-white">{deal.name}</span>
                         {assignedPrincipal ? (
-                          <span className="text-xs text-terminal-green font-mono">{assignedPrincipal.name}</span>
+                          <span className="text-xs font-mono text-terminal-green">{assignedPrincipal.name}</span>
                         ) : (
-                          <span className="text-xs text-terminal-red font-mono">UNASSIGNED</span>
+                          <span className="text-xs font-mono text-terminal-red">UNASSIGNED</span>
                         )}
                       </div>
                       {!assignedPrincipal && availablePrincipals.length > 0 && (
-                        <div className="flex gap-1 mt-1">
-                          {availablePrincipals.map((p) => (
+                        <div className="mt-1 flex gap-1">
+                          {availablePrincipals.map((principal) => (
                             <button
-                              key={p.id}
-                              onClick={() => assignTeamMember(p.id, deal.id)}
-                              className="text-[10px] px-2 py-0.5 bg-terminal-green/10 border border-terminal-green/30 text-terminal-green rounded hover:bg-terminal-green/20"
+                              key={principal.id}
+                              onClick={() => assignTeamMember(principal.id, deal.id)}
+                              className="rounded border border-terminal-green/30 bg-terminal-green/10 px-2 py-0.5 text-[10px] text-terminal-green hover:bg-terminal-green/20"
                             >
-                              {p.name} (D:{Math.round(p.skills.diligence)})
+                              {principal.name} (D:{Math.round(principal.skills.diligence)})
                             </button>
                           ))}
                         </div>
@@ -152,40 +149,43 @@ export function TeamAssignmentView() {
             </div>
           )}
 
-          {/* Portfolio Companies */}
           {activeCompanies.length > 0 && (
             <div>
-              <h3 className="text-xs font-mono text-terminal-muted uppercase mb-2">Portfolio — Assign Operating Partner</h3>
+              <h3 className="mb-2 text-xs font-mono uppercase text-terminal-muted">Portfolio - Assign Operating Partner</h3>
               <div className="space-y-2">
-                {activeCompanies.map((co) => {
-                  const assignedOP = teamMembers.find(
-                    (tm) => tm.role === 'OperatingPartner' && tm.currentAssignments.includes(co.id)
+                {activeCompanies.map((company) => {
+                  const assignedOperatingPartner = teamMembers.find(
+                    (teamMember) => teamMember.role === 'OperatingPartner' && teamMember.currentAssignments.includes(company.id),
                   )
-                  const availableOPs = teamMembers.filter(
-                    (tm) => tm.role === 'OperatingPartner' && tm.status === 'Active' && tm.currentAssignments.length < tm.capacity && !tm.currentAssignments.includes(co.id)
+                  const availableOperatingPartners = teamMembers.filter(
+                    (teamMember) =>
+                      teamMember.role === 'OperatingPartner'
+                      && teamMember.status === 'Active'
+                      && teamMember.currentAssignments.length < teamMember.capacity
+                      && !teamMember.currentAssignments.includes(company.id),
                   )
 
                   return (
-                    <div key={co.id} className="bg-terminal-surface border border-terminal-border rounded p-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-terminal-white text-xs">{co.name}</span>
-                        {assignedOP ? (
-                          <span className="text-xs text-terminal-green font-mono">
-                            {assignedOP.name} ({co.sector}: {Math.round(assignedOP.skills.sectorExpertise[co.sector])})
+                    <div key={company.id} className="rounded border border-terminal-border bg-terminal-surface p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-terminal-white">{company.name}</span>
+                        {assignedOperatingPartner ? (
+                          <span className="text-xs font-mono text-terminal-green">
+                            {assignedOperatingPartner.name} ({company.sector}: {Math.round(assignedOperatingPartner.skills.sectorExpertise[company.sector])})
                           </span>
                         ) : (
-                          <span className="text-xs text-terminal-amber font-mono">NO OP</span>
+                          <span className="text-xs font-mono text-terminal-amber">NO OP</span>
                         )}
                       </div>
-                      {!assignedOP && availableOPs.length > 0 && (
-                        <div className="flex gap-1 mt-1">
-                          {availableOPs.map((op) => (
+                      {!assignedOperatingPartner && availableOperatingPartners.length > 0 && (
+                        <div className="mt-1 flex gap-1">
+                          {availableOperatingPartners.map((operatingPartner) => (
                             <button
-                              key={op.id}
-                              onClick={() => assignTeamMember(op.id, co.id)}
-                              className="text-[10px] px-2 py-0.5 bg-terminal-green/10 border border-terminal-green/30 text-terminal-green rounded hover:bg-terminal-green/20"
+                              key={operatingPartner.id}
+                              onClick={() => assignTeamMember(operatingPartner.id, company.id)}
+                              className="rounded border border-terminal-green/30 bg-terminal-green/10 px-2 py-0.5 text-[10px] text-terminal-green hover:bg-terminal-green/20"
                             >
-                              {op.name} (Ops:{Math.round(op.skills.operationalExecution)}, {co.sector}:{Math.round(op.skills.sectorExpertise[co.sector])})
+                              {operatingPartner.name} (Ops:{Math.round(operatingPartner.skills.operationalExecution)}, {company.sector}:{Math.round(operatingPartner.skills.sectorExpertise[company.sector])})
                             </button>
                           ))}
                         </div>

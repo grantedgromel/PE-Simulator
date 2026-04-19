@@ -69,6 +69,12 @@ export interface FinalScore {
   totalPersonalCarry: number
   totalManagementFeeIncome: number
   totalEmployeesImpacted: number
+  totalLayoffs: number
+  totalJobsAdded: number
+  totalExtractedCash: number
+  totalInvestedInBusinesses: number
+  averageCommunityTrust: number
+  averageHumanOutcomeScore: number
   returnGrade: 'S' | 'A' | 'B' | 'C' | 'D' | 'F'
   humanImpactGrade: 'S' | 'A' | 'B' | 'C' | 'D' | 'F'
 }

@@ -26,6 +26,20 @@ export interface ActionRecord {
   ebitdaImpact: number
   revenueImpact: number
   moraleImpact: number
+  commandCost?: number
+}
+
+export interface ConsequenceLedger {
+  layoffs: number
+  jobsAdded: number
+  priceHikes: number
+  dividendRecaps: number
+  extractedCash: number
+  investedCash: number
+  growthInvestments: number
+  communityBacklashEvents: number
+  regulatoryIncidents: number
+  qualityIncidents: number
 }
 
 export interface PortfolioCompany {
@@ -49,6 +63,7 @@ export interface PortfolioCompany {
   employeeCount: number
   morale: number
   customerSatisfaction: number
+  communityTrust: number
   fragility: number
   resilience: number
   yearsHeld: number
@@ -69,6 +84,7 @@ export interface PortfolioCompany {
   covenantBreached: boolean
   covenantChoicePending: boolean
   dividendRecapTotal: number
+  consequenceLedger: ConsequenceLedger
   exitInProgress: import('../types/effects').ExitInProgress | null
   assignedOperatingPartnerId?: string
 }

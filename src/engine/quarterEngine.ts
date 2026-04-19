@@ -7,6 +7,8 @@ import { generateQuarterlyEvents } from './eventEngine'
 import { completeExit, forceExitAll } from './exitEngine'
 import { processSkillDevelopment, checkTeamEvents } from './teamEngine'
 import { PRNG } from './prng'
+import { applyConsequenceDelta, ensureCompanyConsequences, summarizeHumanConsequences } from './consequenceEngine'
+import { getMainStreetBacklashDescription } from '../data/sectorConsequenceFlavor'
 
 const PHASE_ORDER: GamePhase[] = [
   'Sourcing',
@@ -92,8 +94,8 @@ export function processEndOfQuarter(state: GameState): GameState {
 
   // 1. Process in-progress exits
   let portfolioCompanies = [...state.portfolioCompanies]
-  let exitedCompanies = [...state.exitedCompanies]
-  let exitResults = [...state.exitResults]
+  const exitedCompanies = [...state.exitedCompanies]
+  const exitResults = [...state.exitResults]
   let totalNewDistributions = 0
 
   for (let i = 0; i < portfolioCompanies.length; i++) {
@@ -140,28 +142,74 @@ export function processEndOfQuarter(state: GameState): GameState {
 
   // Apply company-specific event effects
   const eventedPortfolio = updatedPortfolio.map((co) => {
-    const effect = companyEffects.find((e) => e.companyId === co.id)
-    if (!effect) return co
-    let updated = { ...co }
-    if (effect.modifications.revenueLoss) {
-      updated.revenue = Math.round(updated.revenue * (1 - effect.modifications.revenueLoss) * 100) / 100
-      updated.ebitda = Math.round(updated.revenue * updated.ebitdaMargin * 100) / 100
-    }
-    if (effect.modifications.moraleDelta) {
-      updated.morale = Math.max(0, Math.min(100, updated.morale + effect.modifications.moraleDelta))
-    }
-    if (effect.modifications.ebitdaRestatement) {
-      updated.ebitda = Math.round(updated.ebitda * (1 - effect.modifications.ebitdaRestatement) * 100) / 100
-      updated.ebitdaMargin = updated.revenue > 0 ? Math.round(updated.ebitda / updated.revenue * 1000) / 1000 : updated.ebitdaMargin
-    }
-    if (effect.modifications.ebitdaHit) {
-      updated.ebitda = Math.round(updated.ebitda * (1 - effect.modifications.ebitdaHit) * 100) / 100
+    let updated = ensureCompanyConsequences(co)
+    const effectsForCompany = companyEffects.filter((effect) => effect.companyId === co.id)
+    if (effectsForCompany.length === 0) return updated
+
+    for (const effect of effectsForCompany) {
+      if (effect.modifications.revenueLoss) {
+        updated.revenue = Math.round(updated.revenue * (1 - effect.modifications.revenueLoss) * 100) / 100
+        updated.ebitda = Math.round(updated.revenue * updated.ebitdaMargin * 100) / 100
+      }
+      if (effect.modifications.moraleDelta) {
+        updated.morale = Math.max(0, Math.min(100, updated.morale + effect.modifications.moraleDelta))
+      }
+      if (effect.modifications.ebitdaRestatement) {
+        updated.ebitda = Math.round(updated.ebitda * (1 - effect.modifications.ebitdaRestatement) * 100) / 100
+        updated.ebitdaMargin = updated.revenue > 0 ? Math.round(updated.ebitda / updated.revenue * 1000) / 1000 : updated.ebitdaMargin
+      }
+      if (effect.modifications.ebitdaHit) {
+        updated.ebitda = Math.round(updated.ebitda * (1 - effect.modifications.ebitdaHit) * 100) / 100
+      }
+      if (effect.modifications.communityTrustDelta || effect.modifications.backlashEvent) {
+        updated = applyConsequenceDelta(updated, {
+          communityTrustDelta: effect.modifications.communityTrustDelta,
+          communityBacklashEvents: effect.modifications.backlashEvent,
+          regulatoryIncidents: effect.modifications.regulatoryIncident,
+          qualityIncidents: effect.modifications.qualityIncident,
+        })
+      }
     }
     return updated
   })
 
+  const consequenceSummary = summarizeHumanConsequences(eventedPortfolio)
+  const lowTrustCompanies = eventedPortfolio.filter((company) => company.communityTrust < 45)
+  const blowbackEvents: import('../types/events').GameEvent[] = []
+  let consequenceReputationDelta = 0
+  let consequenceLpTrustDelta = 0
+
+  if (lowTrustCompanies.length > 0) {
+    consequenceReputationDelta -= lowTrustCompanies.length >= 2 ? 2 : 1
+  }
+  if (consequenceSummary.averageCommunityTrust > 0 && consequenceSummary.averageCommunityTrust < 45) {
+    consequenceReputationDelta -= 1
+  }
+  if (
+    consequenceSummary.totalDividendRecaps > 0
+    && consequenceSummary.totalExtractedCash > consequenceSummary.totalInvestedCash * 1.25
+  ) {
+    consequenceLpTrustDelta -= 1
+  }
+
+  if (consequenceReputationDelta < 0 || consequenceLpTrustDelta < 0) {
+    const mostPressuredCompany = lowTrustCompanies[0]
+    blowbackEvents.push({
+      id: `evt-blowback-${newTotalQuarters}`,
+      category: 'Satirical',
+      title: 'Main Street Blowback',
+      description: mostPressuredCompany
+        ? getMainStreetBacklashDescription(mostPressuredCompany, newTotalQuarters + lowTrustCompanies.length)
+        : 'Your portfolio is drawing more hostile attention from customers, employees, and local press.',
+      quarter: newTotalQuarters,
+      year: nextYear,
+      impact: { reputation: consequenceReputationDelta, lpTrust: consequenceLpTrustDelta },
+      resolved: true,
+    })
+  }
+
   // 5. Update market conditions
-  let newMarket = updateMarketConditions(prng, state.marketConditions)
+  const newMarket = updateMarketConditions(prng, state.marketConditions)
   if (marketDelta.interestRateModifier) newMarket.interestRateModifier += marketDelta.interestRateModifier
   if (marketDelta.exitMultipleModifier) newMarket.exitMultipleModifier += marketDelta.exitMultipleModifier
   if (marketDelta.creditAvailability) newMarket.creditAvailability = Math.max(0, Math.min(100, newMarket.creditAvailability + marketDelta.creditAvailability))
@@ -177,7 +225,8 @@ export function processEndOfQuarter(state: GameState): GameState {
       (updatedFund.committedCapital - totalDeployed - updatedFund.managementFeesCollected) * 100
     ) / 100,
     totalDistributions: Math.round((updatedFund.totalDistributions + totalNewDistributions) * 100) / 100,
-    reputationScore: Math.max(0, Math.min(100, updatedFund.reputationScore + reputationDelta)),
+    reputationScore: Math.max(0, Math.min(100, updatedFund.reputationScore + reputationDelta + consequenceReputationDelta)),
+    lpTrustScore: Math.max(0, Math.min(100, updatedFund.lpTrustScore + consequenceLpTrustDelta)),
   }
 
   // 7. Generate new deals (only during investment period)
@@ -210,7 +259,7 @@ export function processEndOfQuarter(state: GameState): GameState {
   }))
 
   // Combine all events
-  const allNewEvents = [...simEvents, ...randomEvents, ...teamEvents]
+  const allNewEvents = [...simEvents, ...randomEvents, ...teamEvents, ...blowbackEvents]
 
   // 8. Check for fund completion and LP report trigger
   const fundComplete = newTotalQuarters >= state.fundEndQuarter

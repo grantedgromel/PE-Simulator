@@ -5,27 +5,27 @@ const SECTORS: { id: Sector; label: string; description: string }[] = [
   {
     id: 'Healthcare',
     label: 'Healthcare Services',
-    description: 'Dental, dermatology, veterinary clinics. High fragmentation, recession-resistant, regulatory risk.',
+    description: 'Dental, dermatology, veterinary clinics. Staffing cuts punish harder, regulators arrive faster, and patient trust matters.',
   },
   {
     id: 'BusinessServices',
     label: 'Business Services',
-    description: 'Staffing, waste management, facilities. Stable cash flows, labor-intensive, margin pressure.',
+    description: 'Staffing, waste management, facilities. Labor execution drives retention, and service misses kill contracts quickly.',
   },
   {
     id: 'Consumer',
     label: 'Consumer / Restaurants',
-    description: 'Fast-casual, fitness, retail. Brand sensitivity, discretionary spending risk, real estate exposure.',
+    description: 'Fast-casual, fitness, retail. Price hikes hit hardest here; brand damage and review collapse are very real.',
   },
   {
     id: 'Technology',
     label: 'Technology / Software',
-    description: 'Vertical SaaS, IT services, MSPs. High multiples, recurring revenue, talent retention risk.',
+    description: 'Vertical SaaS, IT services, MSPs. Talent and support quality drive churn; reinvestment pays off more.',
   },
   {
     id: 'Industrial',
     label: 'Industrial / Manufacturing',
-    description: 'Specialty chemicals, packaging, building products. Cyclical, capex-heavy, supply chain risk.',
+    description: 'Specialty chemicals, packaging, building products. Deferred maintenance and thin staffing turn into quality and plant-risk events.',
   },
 ]
 

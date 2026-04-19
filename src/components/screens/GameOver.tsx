@@ -48,7 +48,7 @@ export function GameOver() {
               {finalScore.humanImpactGrade}
             </div>
             <div className="text-sm text-terminal-muted font-mono mt-2">
-              {finalScore.totalEmployeesImpacted.toLocaleString()} employees
+              {finalScore.averageHumanOutcomeScore.toFixed(1)}/100 ownership score
             </div>
           </div>
         </div>
@@ -71,6 +71,36 @@ export function GameOver() {
             <div>
               <div className="text-terminal-muted text-xs">Total Management Fee Income</div>
               <div className="font-mono text-terminal-white text-lg">{formatCurrency(finalScore.totalManagementFeeIncome)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-terminal-surface border border-terminal-border rounded p-4">
+          <h3 className="text-xs font-mono text-terminal-amber uppercase mb-3">Ownership Footprint</h3>
+          <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+            <div>
+              <div className="text-terminal-muted text-xs">Average Community Trust</div>
+              <div className="font-mono text-terminal-white text-lg">{finalScore.averageCommunityTrust.toFixed(1)}/100</div>
+            </div>
+            <div>
+              <div className="text-terminal-muted text-xs">Total Layoffs</div>
+              <div className="font-mono text-terminal-red text-lg">{finalScore.totalLayoffs.toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-terminal-muted text-xs">Jobs Added</div>
+              <div className="font-mono text-terminal-green text-lg">{finalScore.totalJobsAdded.toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-terminal-muted text-xs">Cash Extracted</div>
+              <div className="font-mono text-terminal-amber text-lg">{formatCurrency(finalScore.totalExtractedCash)}</div>
+            </div>
+            <div>
+              <div className="text-terminal-muted text-xs">Cash Reinvested</div>
+              <div className="font-mono text-terminal-white text-lg">{formatCurrency(finalScore.totalInvestedInBusinesses)}</div>
+            </div>
+            <div>
+              <div className="text-terminal-muted text-xs">Employees Touched</div>
+              <div className="font-mono text-terminal-white text-lg">{finalScore.totalEmployeesImpacted.toLocaleString()}</div>
             </div>
           </div>
         </div>

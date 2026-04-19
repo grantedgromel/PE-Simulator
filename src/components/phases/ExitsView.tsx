@@ -2,42 +2,46 @@ import { useGameStore } from '../../store/gameStore'
 import { calculateExitOptions } from '../../engine/exitEngine'
 import type { ExitRoute } from '../../types/effects'
 import { formatCurrency, formatMultiple } from '../../utils/formatters'
+import { PhaseBrief } from '../shared/PhaseBrief'
+import { PHASE_BRIEFS } from '../../data/phaseBriefs'
+import { getOwnershipArchetype, getStakeholderOutcomeScore } from '../../engine/consequenceEngine'
 
 export function ExitsView() {
   const { portfolioCompanies, fund, marketConditions, difficulty, initiateCompanyExit } = useGameStore()
 
   const eligibleCompanies = portfolioCompanies.filter(
-    (c) => c.status === 'Active' && (c.quartersHeld >= 8 || c.exitInProgress)
+    (company) => company.status === 'Active' && (company.quartersHeld >= 8 || company.exitInProgress),
   )
 
   if (eligibleCompanies.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-terminal-muted">
-        <p className="font-mono">No companies eligible for exit (must hold 2+ years).</p>
+      <div className="p-6 overflow-y-auto h-full space-y-6">
+        <PhaseBrief {...PHASE_BRIEFS.exits} />
+        <div className="flex min-h-64 items-center justify-center rounded-2xl border border-terminal-border bg-terminal-surface text-terminal-muted">
+          <p className="font-mono">No companies eligible for exit (must hold 2+ years).</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="p-6 overflow-y-auto h-full">
-      <div className="mb-4">
-        <h2 className="text-sm font-mono text-terminal-amber uppercase tracking-widest">Exit Opportunities</h2>
-        <p className="text-xs text-terminal-muted mt-1">
-          Choose an exit route for eligible portfolio companies.
-        </p>
-      </div>
+      <PhaseBrief {...PHASE_BRIEFS.exits} />
 
-      <div className="space-y-6">
+      <div className="mt-6 space-y-6">
         {eligibleCompanies.map((company) => {
+          const humanScore = getStakeholderOutcomeScore(company)
+          const ownershipArchetype = getOwnershipArchetype(company)
+
           if (company.exitInProgress) {
             return (
-              <div key={company.id} className="bg-terminal-surface border border-terminal-amber/30 rounded p-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-terminal-white font-medium">{company.name}</h3>
+              <div key={company.id} className="rounded border border-terminal-amber/30 bg-terminal-surface p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-terminal-white">{company.name}</h3>
                   <span className="text-xs font-mono text-terminal-amber">EXIT IN PROGRESS</span>
                 </div>
-                <p className="text-xs text-terminal-muted mt-1">
-                  {company.exitInProgress.route} — Estimated proceeds: {formatCurrency(company.exitInProgress.estimatedProceeds)}
+                <p className="mt-1 text-xs text-terminal-muted">
+                  {company.exitInProgress.route} - Estimated proceeds: {formatCurrency(company.exitInProgress.estimatedProceeds)}
                 </p>
               </div>
             )
@@ -46,50 +50,53 @@ export function ExitsView() {
           const options = calculateExitOptions(company, fund, marketConditions, difficulty)
 
           return (
-            <div key={company.id} className="bg-terminal-surface border border-terminal-border rounded p-4">
-              <div className="flex justify-between items-start mb-3">
+            <div key={company.id} className="rounded border border-terminal-border bg-terminal-surface p-4">
+              <div className="mb-3 flex items-start justify-between">
                 <div>
-                  <h3 className="text-terminal-white font-medium">{company.name}</h3>
-                  <p className="text-terminal-muted text-xs">
-                    {company.subSector} — {company.quartersHeld}Q held — EBITDA: {formatCurrency(company.ebitda)}
+                  <h3 className="font-medium text-terminal-white">{company.name}</h3>
+                  <p className="text-xs text-terminal-muted">
+                    {company.subSector} - {company.quartersHeld}Q held - EBITDA: {formatCurrency(company.ebitda)}
+                  </p>
+                  <p className="mt-1 text-xs text-terminal-muted">
+                    Community trust: {company.communityTrust}/100 | Human score: {humanScore}/100 | {ownershipArchetype}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-2">
-                {options.map((opt) => (
+                {options.map((option) => (
                   <div
-                    key={opt.route}
-                    className={`flex items-center justify-between px-3 py-2 rounded border text-xs ${
-                      opt.available
+                    key={option.route}
+                    className={`flex items-center justify-between rounded border px-3 py-2 text-xs ${
+                      option.available
                         ? 'border-terminal-border hover:border-terminal-muted'
                         : 'border-terminal-border/50 opacity-40'
                     }`}
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={`font-mono ${routeColor(opt.route)}`}>{routeLabel(opt.route)}</span>
+                        <span className={`font-mono ${routeColor(option.route)}`}>{routeLabel(option.route)}</span>
                         <span className="text-terminal-muted">|</span>
-                        <span className="text-terminal-white font-mono">{formatMultiple(opt.exitMultiple)}</span>
-                        <span className="text-terminal-muted">→</span>
-                        <span className="text-terminal-green font-mono">{formatCurrency(opt.netProceeds)}</span>
+                        <span className="font-mono text-terminal-white">{formatMultiple(option.exitMultiple)}</span>
+                        <span className="text-terminal-muted">-&gt;</span>
+                        <span className="font-mono text-terminal-green">{formatCurrency(option.netProceeds)}</span>
                         <span className="text-terminal-muted">|</span>
-                        <span className="font-mono text-terminal-white">{formatMultiple(opt.estimatedGrossMoic)} MOIC</span>
+                        <span className="font-mono text-terminal-white">{formatMultiple(option.estimatedGrossMoic)} MOIC</span>
                       </div>
-                      <p className="text-[10px] text-terminal-muted mt-0.5">{opt.description}</p>
-                      {!opt.available && opt.unavailableReason && (
-                        <p className="text-[10px] text-terminal-red">{opt.unavailableReason}</p>
+                      <p className="mt-0.5 text-[10px] text-terminal-muted">{option.description}</p>
+                      {!option.available && option.unavailableReason && (
+                        <p className="text-[10px] text-terminal-red">{option.unavailableReason}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 ml-4">
+                    <div className="ml-4 flex items-center gap-3">
                       <div className="text-right">
-                        <div className="text-[10px] text-terminal-muted">{opt.timeToComplete}Q</div>
-                        <div className="text-[10px] text-terminal-muted">{Math.round(opt.successProbability * 100)}%</div>
+                        <div className="text-[10px] text-terminal-muted">{option.timeToComplete}Q</div>
+                        <div className="text-[10px] text-terminal-muted">{Math.round(option.successProbability * 100)}%</div>
                       </div>
-                      {opt.available && (
+                      {option.available && (
                         <button
-                          onClick={() => initiateCompanyExit(company.id, opt.route)}
-                          className="px-3 py-1 bg-terminal-green/15 border border-terminal-green text-terminal-green font-mono text-[10px] rounded hover:bg-terminal-green/25"
+                          onClick={() => initiateCompanyExit(company.id, option.route)}
+                          className="rounded border border-terminal-green bg-terminal-green/15 px-3 py-1 font-mono text-[10px] text-terminal-green hover:bg-terminal-green/25"
                         >
                           EXIT
                         </button>

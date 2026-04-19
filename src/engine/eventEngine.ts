@@ -2,6 +2,10 @@ import type { GameState, Difficulty } from '../types/game'
 import type { GameEvent } from '../types/events'
 import type { MarketConditions } from '../types/effects'
 import { PRNG } from './prng'
+import {
+  getLayoffPressQuote,
+  getMainStreetBacklashDescription,
+} from '../data/sectorConsequenceFlavor'
 
 interface EventTemplate {
   name: string
@@ -91,16 +95,63 @@ const EVENT_TEMPLATES: EventTemplate[] = [
     category: 'Satirical',
     difficulty: 'all',
     weight: 4,
-    precondition: (state) => state.portfolioCompanies.some(c => c.costCutCount > 0 && c.status === 'Active'),
+    precondition: (state) => state.portfolioCompanies.some(
+      (c) => c.consequenceLedger?.layoffs > 0 && c.status === 'Active',
+    ),
     generate: (prng, state, quarter) => {
-      const co = prng.pick(state.portfolioCompanies.filter(c => c.costCutCount > 0 && c.status === 'Active'))
+      const co = prng.pick(state.portfolioCompanies.filter(
+        (c) => c.consequenceLedger?.layoffs > 0 && c.status === 'Active',
+      ))
+      const layoffCount = co?.consequenceLedger?.layoffs ?? Math.round((co?.employeeCount ?? 100) * 0.1)
+      const quote = co ? getLayoffPressQuote(co, quarter + layoffCount) : '"PE-backed company cuts jobs at beloved local business."'
       return {
         event: {
           id: `evt-press-${quarter}`, category: 'Satirical', title: `Press Coverage: ${co?.name ?? 'Company'}`,
-          description: `Local newspaper published article about layoffs at ${co?.name}. "PE firm cuts ${Math.round((co?.employeeCount ?? 100) * 0.1)} jobs at beloved local business."`,
+          description: `Local newspaper published article about layoffs at ${co?.name}. ${quote} Estimated positions affected: ${layoffCount}.`,
           quarter, year: 0, impact: { reputation: -2 }, resolved: true,
         },
-        stateModifications: { reputationDelta: -2 },
+        stateModifications: co
+          ? {
+              reputationDelta: -2,
+              companyId: co.id,
+              companyModifications: { communityTrustDelta: -5, backlashEvent: 1 },
+            }
+          : { reputationDelta: -2 },
+      }
+    },
+  },
+  {
+    name: 'Main Street Backlash',
+    category: 'Satirical',
+    difficulty: 'all',
+    weight: 3,
+    precondition: (state) => state.portfolioCompanies.some(
+      (c) => c.status === 'Active' && (c.communityTrust ?? 60) < 45,
+    ),
+    generate: (prng, state, quarter) => {
+      const co = prng.pick(state.portfolioCompanies.filter(
+        (c) => c.status === 'Active' && (c.communityTrust ?? 60) < 45,
+      ))
+      return {
+        event: {
+          id: `evt-backlash-${quarter}`,
+          category: 'Satirical',
+          title: `Town Hall Revolt: ${co?.name ?? 'Portfolio Company'}`,
+          description: co
+            ? getMainStreetBacklashDescription(co, quarter)
+            : 'A portfolio company is taking heat from customers, workers, and local officials. The ownership playbook is now part of the story.',
+          quarter,
+          year: 0,
+          impact: { reputation: -3 },
+          resolved: true,
+        },
+        stateModifications: co
+          ? {
+              reputationDelta: -3,
+              companyId: co.id,
+              companyModifications: { communityTrustDelta: -4, backlashEvent: 1, moraleDelta: -3 },
+            }
+          : { reputationDelta: -3 },
       }
     },
   },

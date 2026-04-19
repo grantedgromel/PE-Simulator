@@ -1,5 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple, formatPercent } from '../../utils/formatters'
+import { summarizeHumanConsequences } from '../../engine/consequenceEngine'
 
 export function FundComplete() {
   const { fund, exitResults, exitedCompanies, writtenOffCompanies, portfolioCompanies, setScreen } = useGameStore()
@@ -9,6 +10,11 @@ export function FundComplete() {
   const avgMoic = totalInvested > 0 ? totalProceeds / totalInvested : 0
   const totalEmployeesImpacted = [...exitedCompanies, ...writtenOffCompanies, ...portfolioCompanies]
     .reduce((sum, c) => sum + c.employeeCount, 0)
+  const humanSummary = summarizeHumanConsequences([
+    ...exitedCompanies,
+    ...writtenOffCompanies,
+    ...portfolioCompanies,
+  ])
 
   const bestDeal = exitResults.length > 0
     ? exitResults.reduce((best, r) => r.grossMoic > best.grossMoic ? r : best)
@@ -97,7 +103,16 @@ export function FundComplete() {
           )}
         </div>
 
-        {/* Satirical Stat */}
+        <div className="bg-terminal-surface border border-terminal-border rounded p-4">
+          <h2 className="text-xs font-mono text-terminal-amber uppercase tracking-wider mb-3">Ownership Footprint</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+            <FundMetric label="Community Trust" value={`${humanSummary.averageCommunityTrust.toFixed(1)}/100`} />
+            <FundMetric label="Layoffs" value={humanSummary.totalLayoffs.toLocaleString()} warn={humanSummary.totalLayoffs > 0} />
+            <FundMetric label="Jobs Added" value={humanSummary.totalJobsAdded.toLocaleString()} highlight={humanSummary.totalJobsAdded > humanSummary.totalLayoffs} />
+            <FundMetric label="Cash Extracted" value={formatCurrency(humanSummary.totalExtractedCash)} warn={humanSummary.totalExtractedCash > humanSummary.totalInvestedCash} />
+          </div>
+        </div>
+
         <div className="text-center text-terminal-muted text-xs font-mono">
           Total employees across your portfolio: {totalEmployeesImpacted.toLocaleString()}
         </div>

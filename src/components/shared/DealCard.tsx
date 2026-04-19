@@ -4,6 +4,7 @@ import { formatCurrency, formatMultiple } from '../../utils/formatters'
 
 interface DealCardProps {
   deal: Deal
+  canPursue: boolean
 }
 
 const SOURCE_LABELS: Record<string, { text: string; color: string }> = {
@@ -12,11 +13,16 @@ const SOURCE_LABELS: Record<string, { text: string; color: string }> = {
   Proprietary: { text: 'PROPRIETARY', color: 'text-terminal-green' },
 }
 
-export function DealCard({ deal }: DealCardProps) {
+export function DealCard({ deal, canPursue }: DealCardProps) {
   const updateDealStatus = useGameStore((s) => s.updateDealStatus)
   const sourceLabel = SOURCE_LABELS[deal.source]
 
   const isActioned = deal.status !== 'Available'
+  const heat = Math.min(5, Math.max(1, deal.competingBidCount + (deal.source === 'Auction' ? 1 : 0)))
+  const scale = Math.min(5, Math.max(1, Math.round((deal.revenue ?? 10) / 20)))
+  const labor = deal.revenue && deal.employeeCount
+    ? Math.min(5, Math.max(1, Math.round((deal.employeeCount / Math.max(1, deal.revenue)) / 1.5)))
+    : null
 
   return (
     <div
@@ -41,10 +47,11 @@ export function DealCard({ deal }: DealCardProps) {
         </span>
       </div>
 
-      {/* Description */}
-      <p className="text-xs text-terminal-muted mb-3 leading-relaxed">
-        {deal.description}
-      </p>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <SignalPips label="Heat" value={heat} tone="amber" />
+        <SignalPips label="Scale" value={scale} tone="blue" />
+        <SignalPips label="Labor" value={labor ?? 1} tone="green" />
+      </div>
 
       {/* Financials */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
@@ -77,7 +84,8 @@ export function DealCard({ deal }: DealCardProps) {
         <div className="flex gap-2">
           <button
             onClick={() => updateDealStatus(deal.id, 'Pursued')}
-            className="flex-1 py-2 bg-terminal-green/15 border border-terminal-green text-terminal-green font-mono text-xs rounded hover:bg-terminal-green/25 transition-colors"
+            disabled={!canPursue}
+            className="flex-1 py-2 bg-terminal-green/15 border border-terminal-green text-terminal-green font-mono text-xs rounded hover:bg-terminal-green/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             PURSUE
           </button>
@@ -124,6 +132,38 @@ function FinancialRow({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between items-center text-xs">
       <span className="text-terminal-muted">{label}</span>
       <span className="font-mono text-terminal-white">{value}</span>
+    </div>
+  )
+}
+
+function SignalPips({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: number
+  tone: 'amber' | 'blue' | 'green'
+}) {
+  const toneClass = tone === 'amber'
+    ? 'bg-terminal-amber'
+    : tone === 'blue'
+      ? 'bg-terminal-blue'
+      : 'bg-terminal-green'
+
+  return (
+    <div className="rounded border border-terminal-border bg-terminal-bg/70 px-2 py-2">
+      <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-terminal-muted">
+        {label}
+      </div>
+      <div className="mt-2 flex gap-1">
+        {Array.from({ length: 5 }, (_, index) => (
+          <div
+            key={index}
+            className={`h-1.5 flex-1 rounded-full ${index < value ? toneClass : 'bg-terminal-border/50'}`}
+          />
+        ))}
+      </div>
     </div>
   )
 }

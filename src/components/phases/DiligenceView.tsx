@@ -2,39 +2,35 @@ import { useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { DILIGENCE_LEVELS, getDiligenceCostForLevel, isFieldRevealed } from '../../engine/diligenceEngine'
 import { getMarketEstimate } from '../../engine/auctionEngine'
+import { getBidRangeModifier, getDiligenceModifier } from '../../engine/teamEngine'
 import { formatCurrency, formatMultiple, formatPercent } from '../../utils/formatters'
+import { PhaseBrief } from '../shared/PhaseBrief'
+import { PHASE_BRIEFS } from '../../data/phaseBriefs'
 
 export function DiligenceView() {
-  const {
-    currentDeals, auctionResults, fund,
-    resolveAllAuctions,
-  } = useGameStore()
+  const { currentDeals, auctionResults, fund, resolveAllAuctions } = useGameStore()
 
-  const pursuedDeals = currentDeals.filter((d) => d.status === 'Pursued')
-  const allBidsSubmitted = pursuedDeals.every((d) => d.playerBid !== null)
+  const pursuedDeals = currentDeals.filter((deal) => deal.status === 'Pursued')
+  const allBidsSubmitted = pursuedDeals.every((deal) => deal.playerBid !== null)
   const auctionsResolved = auctionResults.length > 0
 
   if (pursuedDeals.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-terminal-muted">
-        <p className="font-mono">No deals to diligence this quarter.</p>
+      <div className="p-6 overflow-y-auto h-full space-y-6">
+        <PhaseBrief {...PHASE_BRIEFS.diligence} />
+        <div className="flex min-h-64 items-center justify-center rounded-2xl border border-terminal-border bg-terminal-surface text-terminal-muted">
+          <p className="font-mono">No deals to diligence this quarter.</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="p-6 overflow-y-auto h-full space-y-6">
-      <div>
-        <h2 className="text-sm font-mono text-terminal-amber uppercase tracking-widest">
-          Due Diligence & Bidding
-        </h2>
-        <p className="text-xs text-terminal-muted mt-1">
-          Run diligence to reveal hidden information, then submit your bid.
-        </p>
-      </div>
+      <PhaseBrief {...PHASE_BRIEFS.diligence} />
 
       {pursuedDeals.map((deal) => {
-        const result = auctionResults.find((r) => r.dealId === deal.id)
+        const result = auctionResults.find((auction) => auction.dealId === deal.id)
         return (
           <DealDiligenceCard
             key={deal.id}
@@ -45,7 +41,6 @@ export function DiligenceView() {
         )
       })}
 
-      {/* Resolve Auctions button */}
       {!auctionsResolved && allBidsSubmitted && (
         <div className="flex justify-center">
           <button
@@ -69,20 +64,42 @@ function DealDiligenceCard({
   auctionResult?: { won: boolean; winningBid: number; competitorBids: number[]; sellerCounterOffer?: number }
   remainingCash: number
 }) {
-  const { runDiligence, submitBid, acceptCounter } = useGameStore()
+  const { runDiligence, submitBid, acceptCounter, teamMembers, difficulty } = useGameStore()
   const [bidInput, setBidInput] = useState('')
   const level = deal.diligenceLevelCompleted
   const estimate = getMarketEstimate(deal)
+  const bidRangeModifier = getBidRangeModifier(deal.id, teamMembers)
+  const diligenceModifier = getDiligenceModifier(deal.id, teamMembers, difficulty)
+  const diligenceCostMultiplier = Math.max(
+    0.8,
+    Math.min(
+      1.12,
+      1 - (diligenceModifier.accuracyBonus * 0.75) - (diligenceModifier.effectiveLevelBonus * 0.08)
+        + (diligenceModifier.unreliableInfo ? 0.06 : 0),
+    ),
+  )
+  const estimateMid = (estimate[0] + estimate[1]) / 2
+  const estimateHalfRange = ((estimate[1] - estimate[0]) / 2) * bidRangeModifier
+  const adjustedEstimate: [number, number] = [
+    Math.round((estimateMid - estimateHalfRange) * 10) / 10,
+    Math.round((estimateMid + estimateHalfRange) * 10) / 10,
+  ]
+  const assignedPrincipal = teamMembers.find(
+    (member) => member.role === 'Principal' && member.currentAssignments.includes(deal.id),
+  )
+  const assignedSupport = teamMembers.find(
+    (member) => (member.role === 'VP' || member.role === 'Associate') && member.currentAssignments.includes(deal.id),
+  )
 
   const bidValue = parseFloat(bidInput)
-  const isValidBid = !isNaN(bidValue) && bidValue > 0
+  const isValidBid = !Number.isNaN(bidValue) && bidValue > 0
 
   return (
-    <div className="bg-terminal-surface border border-terminal-border rounded p-4">
-      <div className="flex justify-between items-start mb-4">
+    <div className="rounded border border-terminal-border bg-terminal-surface p-4">
+      <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="text-terminal-white font-medium">{deal.name}</h3>
-          <p className="text-terminal-muted text-xs">{deal.subSector}</p>
+          <h3 className="font-medium text-terminal-white">{deal.name}</h3>
+          <p className="text-xs text-terminal-muted">{deal.subSector}</p>
         </div>
         {auctionResult && (
           <span className={`text-sm font-mono ${auctionResult.won ? 'text-terminal-green' : 'text-terminal-red'}`}>
@@ -91,10 +108,19 @@ function DealDiligenceCard({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* Left: Company info with progressive reveal */}
+      <div className="mb-4 grid gap-2 md:grid-cols-3">
+        <MiniReadout label="Lead" value={assignedPrincipal?.name ?? 'Unassigned'} warn={!assignedPrincipal} />
+        <MiniReadout label="Support" value={assignedSupport?.name ?? 'None'} />
+        <MiniReadout
+          label="Read"
+          value={diligenceModifier.additionalReveal ? 'Sharp' : diligenceModifier.unreliableInfo ? 'Noisy' : 'Standard'}
+          tone={diligenceModifier.additionalReveal ? 'green' : diligenceModifier.unreliableInfo ? 'red' : 'white'}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-2">
-          <h4 className="text-xs font-mono text-terminal-muted uppercase">Company Information</h4>
+          <h4 className="text-xs font-mono uppercase text-terminal-muted">Company Information</h4>
 
           <InfoRow label="Revenue" value={deal.revenue !== null ? formatCurrency(deal.revenue) : '???'} />
           <InfoRow
@@ -135,14 +161,14 @@ function DealDiligenceCard({
           />
           <InfoRow
             label="Hidden Risks"
-            value={isFieldRevealed('hiddenRisksPartial', level) ? `${deal.hiddenRisks.length} identified` : '???'}
+            value={isFieldRevealed('hiddenRisksPartial', level) ? `${deal.hiddenRisks.length} flagged` : '???'}
             locked={!isFieldRevealed('hiddenRisksPartial', level)}
             unlockLevel={3}
           />
           {isFieldRevealed('hiddenRisksFull', level) && deal.hiddenRisks.length > 0 && (
             <div className="mt-2 space-y-1">
-              {deal.hiddenRisks.map((risk, i) => (
-                <div key={i} className="text-xs text-terminal-red">- {risk}</div>
+              {deal.hiddenRisks.map((risk) => (
+                <div key={risk} className="text-xs text-terminal-red">- {risk}</div>
               ))}
             </div>
           )}
@@ -159,25 +185,23 @@ function DealDiligenceCard({
             unlockLevel={4}
           />
 
-          <div className="border-t border-terminal-border mt-3 pt-2">
+          <div className="mt-3 border-t border-terminal-border pt-2">
             <InfoRow label="Ask Multiple" value={formatMultiple(deal.askingMultiple)} />
             <InfoRow label="Est. EV" value={formatCurrency(deal.enterpriseValue)} />
             <InfoRow label="Competing Bids" value={String(deal.competingBidCount)} />
           </div>
         </div>
 
-        {/* Right: Diligence controls + bidding */}
         <div className="space-y-4">
-          {/* Diligence Level Selector */}
           {!auctionResult && (
             <>
               <div>
-                <h4 className="text-xs font-mono text-terminal-muted uppercase mb-2">Diligence Level</h4>
+                <h4 className="mb-2 text-xs font-mono uppercase text-terminal-muted">Diligence Levels</h4>
                 <div className="space-y-1">
                   {DILIGENCE_LEVELS.map((info) => {
                     const isCompleted = level >= info.level
                     const isNext = info.level === level + 1
-                    const cost = getDiligenceCostForLevel(level, info.level)
+                    const cost = Math.round(getDiligenceCostForLevel(level, info.level) * diligenceCostMultiplier * 100) / 100
                     const canAfford = cost <= remainingCash
 
                     return (
@@ -189,51 +213,69 @@ function DealDiligenceCard({
                           }
                         }}
                         disabled={isCompleted || !canAfford}
-                        className={`w-full text-left px-3 py-2 rounded border text-xs transition-colors ${
+                        className={`w-full rounded border px-3 py-2 text-left text-xs transition-colors ${
                           isCompleted
-                            ? 'bg-terminal-green/10 border-terminal-green/30 text-terminal-green'
+                            ? 'border-terminal-green/30 bg-terminal-green/10 text-terminal-green'
                             : isNext && canAfford
-                              ? 'bg-terminal-surface border-terminal-amber text-terminal-amber hover:bg-terminal-amber/10'
-                              : 'bg-terminal-bg border-terminal-border text-terminal-muted'
+                              ? 'border-terminal-amber bg-terminal-surface text-terminal-amber hover:bg-terminal-amber/10'
+                              : 'border-terminal-border bg-terminal-bg text-terminal-muted'
                         }`}
                       >
                         <div className="flex justify-between">
                           <span className="font-mono">Level {info.level}</span>
-                          <span className="font-mono">
-                            {isCompleted ? 'DONE' : formatCurrency(cost)}
-                          </span>
+                          <span className="font-mono">{isCompleted ? 'DONE' : formatCurrency(cost)}</span>
                         </div>
-                        <p className="text-[10px] mt-0.5 opacity-70">{info.description}</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {info.revealedLabels.slice(0, 3).map((label) => (
+                            <span
+                              key={label}
+                              className="rounded-full border border-terminal-border px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-terminal-muted"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
                       </button>
                     )
                   })}
                 </div>
                 {level > 0 && (
-                  <p className="text-xs text-terminal-muted mt-2">
+                  <p className="mt-2 text-xs text-terminal-muted">
                     Diligence spent: {formatCurrency(deal.diligenceCost)}
                   </p>
                 )}
               </div>
 
-              {/* Bidding */}
               {level >= 1 && !deal.playerBid && (
                 <div className="border-t border-terminal-border pt-4">
-                  <h4 className="text-xs font-mono text-terminal-muted uppercase mb-2">Submit Bid</h4>
-                  <div className="text-xs text-terminal-muted mb-2">
-                    Market estimate: {formatMultiple(estimate[0])} — {formatMultiple(estimate[1])}
+                  <h4 className="mb-2 text-xs font-mono uppercase text-terminal-muted">Submit Bid</h4>
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="text-terminal-muted">Market window</span>
+                    <span className="font-mono text-terminal-white">
+                      {formatMultiple(adjustedEstimate[0])} - {formatMultiple(adjustedEstimate[1])}
+                    </span>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="text-terminal-muted">Edge</span>
+                    <span className="font-mono text-terminal-green">
+                      {diligenceModifier.additionalReveal ? '+1 deep tier' : diligenceModifier.effectiveLevelBonus > 0 ? 'Lower spend' : 'Flat'}
+                    </span>
+                  </div>
+                  <div className="mb-2 text-[10px] text-terminal-muted">
+                    {assignedPrincipal ? `${assignedPrincipal.name} is covering this deal.` : 'No principal assigned.'}
                   </div>
                   <div className="flex gap-2">
-                    <div className="flex-1 relative">
+                    <div className="relative flex-1">
                       <input
                         type="number"
                         step="0.1"
                         min="1"
                         value={bidInput}
-                        onChange={(e) => setBidInput(e.target.value)}
+                        onChange={(event) => setBidInput(event.target.value)}
                         placeholder="e.g. 8.5"
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-terminal-white font-mono text-sm focus:outline-none focus:border-terminal-green"
+                        className="w-full rounded border border-terminal-border bg-terminal-bg px-3 py-2 text-sm font-mono text-terminal-white focus:outline-none focus:border-terminal-green"
                       />
-                      <span className="absolute right-3 top-2 text-terminal-muted text-sm">x</span>
+                      <span className="absolute right-3 top-2 text-sm text-terminal-muted">x</span>
                     </div>
                     <button
                       onClick={() => {
@@ -243,20 +285,19 @@ function DealDiligenceCard({
                         }
                       }}
                       disabled={!isValidBid}
-                      className="px-4 py-2 bg-terminal-green/20 border border-terminal-green text-terminal-green font-mono text-xs rounded hover:bg-terminal-green/30 transition-colors disabled:opacity-30"
+                      className="rounded border border-terminal-green bg-terminal-green/20 px-4 py-2 font-mono text-xs text-terminal-green transition-colors hover:bg-terminal-green/30 disabled:opacity-30"
                     >
                       BID
                     </button>
                   </div>
                   {isValidBid && deal.actualEbitda > 0 && (
-                    <p className="text-xs text-terminal-muted mt-1 font-mono">
+                    <p className="mt-1 text-xs font-mono text-terminal-muted">
                       {formatMultiple(bidValue)} x {formatCurrency(deal.actualEbitda)} EBITDA = {formatCurrency(bidValue * deal.actualEbitda)} TEV
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Bid submitted, waiting for resolution */}
               {deal.playerBid !== null && (
                 <div className="border-t border-terminal-border pt-4">
                   <p className="text-xs font-mono text-terminal-green">
@@ -267,22 +308,21 @@ function DealDiligenceCard({
             </>
           )}
 
-          {/* Auction result */}
           {auctionResult && (
             <div className="border-t border-terminal-border pt-4">
-              <h4 className="text-xs font-mono text-terminal-muted uppercase mb-2">Auction Result</h4>
+              <h4 className="mb-2 text-xs font-mono uppercase text-terminal-muted">Auction Result</h4>
               {auctionResult.won ? (
                 <div className="space-y-1">
-                  <p className="text-sm text-terminal-green font-mono">You won at {formatMultiple(auctionResult.winningBid)}</p>
+                  <p className="text-sm font-mono text-terminal-green">You won at {formatMultiple(auctionResult.winningBid)}</p>
                   {auctionResult.competitorBids.length > 0 && (
                     <p className="text-xs text-terminal-muted">
-                      Competing bids: {auctionResult.competitorBids.map((b) => formatMultiple(b)).join(', ')}
+                      Competing bids: {auctionResult.competitorBids.map((bid) => formatMultiple(bid)).join(', ')}
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-sm text-terminal-red font-mono">
+                  <p className="text-sm font-mono text-terminal-red">
                     {auctionResult.winningBid > 0
                       ? `Lost. Winning bid: ${formatMultiple(auctionResult.winningBid)}`
                       : 'Seller walked away.'}
@@ -290,13 +330,13 @@ function DealDiligenceCard({
                   {auctionResult.sellerCounterOffer && (
                     <div className="mt-2">
                       <p className="text-xs text-terminal-amber">
-                        Seller counter-offer: {formatMultiple(auctionResult.sellerCounterOffer)}
+                        Seller counter: {formatMultiple(auctionResult.sellerCounterOffer)}
                       </p>
                       <button
                         onClick={() => acceptCounter(deal.id, auctionResult.sellerCounterOffer!)}
-                        className="mt-1 px-3 py-1 bg-terminal-amber/20 border border-terminal-amber text-terminal-amber font-mono text-xs rounded hover:bg-terminal-amber/30"
+                        className="mt-1 rounded border border-terminal-amber bg-terminal-amber/20 px-3 py-1 font-mono text-xs text-terminal-amber hover:bg-terminal-amber/30"
                       >
-                        ACCEPT COUNTER
+                        ACCEPT
                       </button>
                     </div>
                   )}
@@ -322,18 +362,45 @@ function InfoRow({
   unlockLevel?: number
 }) {
   return (
-    <div className="flex justify-between items-center text-xs">
+    <div className="flex items-center justify-between text-xs">
       <span className="text-terminal-muted">{label}</span>
       <span className={`font-mono ${locked ? 'text-terminal-border' : 'text-terminal-white'}`}>
         {locked ? (
           <span title={unlockLevel ? `Revealed at Level ${unlockLevel}` : ''}>
             <span className="text-terminal-border">???</span>
-            {unlockLevel && <span className="text-[10px] text-terminal-border ml-1">L{unlockLevel}</span>}
+            {unlockLevel && <span className="ml-1 text-[10px] text-terminal-border">L{unlockLevel}</span>}
           </span>
         ) : (
           value
         )}
       </span>
+    </div>
+  )
+}
+
+function MiniReadout({
+  label,
+  value,
+  tone = 'white',
+  warn = false,
+}: {
+  label: string
+  value: string
+  tone?: 'green' | 'red' | 'white'
+  warn?: boolean
+}) {
+  const toneClass = warn
+    ? 'text-terminal-red'
+    : tone === 'green'
+      ? 'text-terminal-green'
+      : tone === 'red'
+        ? 'text-terminal-red'
+        : 'text-terminal-white'
+
+  return (
+    <div className="rounded border border-terminal-border bg-terminal-bg/70 px-3 py-2">
+      <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-terminal-muted">{label}</div>
+      <div className={`mt-1 text-xs font-medium ${toneClass}`}>{value}</div>
     </div>
   )
 }

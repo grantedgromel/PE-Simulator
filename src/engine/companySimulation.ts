@@ -2,6 +2,14 @@ import type { PortfolioCompany } from '../types/company'
 import type { PendingEffect } from '../types/effects'
 import type { GameEvent } from '../types/events'
 import { PRNG } from './prng'
+import { applyConsequenceDelta, clampHumanMetric, ensureCompanyConsequences } from './consequenceEngine'
+import {
+  getCustomerLossDescription,
+  getEmployeeExodusDescription,
+  getQualityCrisisDescription,
+  getRegulatoryActionDescription,
+} from '../data/sectorConsequenceFlavor'
+import { applySectorQuarterlyDynamics, getSectorTuning } from './sectorDynamics'
 
 export interface SimulationResult {
   company: PortfolioCompany
@@ -15,7 +23,8 @@ export function simulateCompanyQuarter(
   allEffects: PendingEffect[],
   currentQuarter: number,
 ): SimulationResult {
-  let co = { ...company }
+  let co = ensureCompanyConsequences(company)
+  const tuning = getSectorTuning(co.sector)
   const companyEffects = allEffects.filter((e) => e.companyId === company.id)
   const otherEffects = allEffects.filter((e) => e.companyId !== company.id)
   const remaining: PendingEffect[] = []
@@ -42,6 +51,8 @@ export function simulateCompanyQuarter(
   if (co.leverageRatio > 4.5) co.fragility += 2
   if (co.morale < 30) co.fragility += 3
   if (co.customerSatisfaction < 30) co.fragility += 3
+  if (co.communityTrust < 45) co.fragility += tuning.lowTrustFragilityBonus
+  if (co.communityTrust < 30) co.fragility += 3
   if (co.morale > 70) co.fragility -= 1
   if (co.customerSatisfaction > 70) co.fragility -= 1
   co.fragility -= 1 // natural decay
@@ -57,6 +68,9 @@ export function simulateCompanyQuarter(
 
   // 4. Skip simulation if company is in exit process
   if (co.exitInProgress) {
+    co.morale = Math.max(0, Math.min(100, Math.round(co.morale)))
+    co.customerSatisfaction = Math.max(0, Math.min(100, Math.round(co.customerSatisfaction)))
+    co.communityTrust = clampHumanMetric(co.communityTrust)
     co.fragility = Math.max(0, Math.min(100, Math.round(co.fragility)))
     return { company: co, remainingEffects: [...otherEffects, ...remaining], events }
   }
@@ -70,6 +84,12 @@ export function simulateCompanyQuarter(
   const annualSeniorInterest = co.seniorDebt * co.seniorDebtRate
   const annualMezzInterest = co.mezzanineDebt * co.mezzanineDebtRate
   const annualDebtService = annualSeniorInterest + annualMezzInterest
+
+  // 6b. Sector-specific drift and failure modes
+  const sectorResult = applySectorQuarterlyDynamics(prng, co, currentQuarter)
+  co = sectorResult.company
+  events.push(...sectorResult.events)
+  remaining.push(...sectorResult.effects)
 
   // 7. Covenant check
   co.covenantBreached = co.ebitda < co.covenantEbitdaThreshold
@@ -92,9 +112,25 @@ export function simulateCompanyQuarter(
   else if (co.morale > 75) co.morale = Math.max(75, co.morale - 1)
   if (co.customerSatisfaction < 70) co.customerSatisfaction = Math.min(70, co.customerSatisfaction + 1)
 
+  if (co.morale > 70 && co.customerSatisfaction > 70) {
+    co.communityTrust += 1.5
+  }
+  if (co.morale < 45 || co.customerSatisfaction < 45) {
+    co.communityTrust -= tuning.lowMoraleTrustPenalty
+  }
+  if (co.consequenceLedger.dividendRecaps > 0 && co.leverageRatio > 5) {
+    co.communityTrust -= 1
+  }
+  if (co.communityTrust < 40) {
+    co.customerSatisfaction -= 2
+  }
+  if (co.communityTrust < 30) {
+    co.revenueGrowthRate = Math.round((co.revenueGrowthRate - 0.005) * 1000) / 1000
+  }
+
   // 9. Revenue penalty for critically low satisfaction
   if (co.customerSatisfaction < 40) {
-    const declinePct = (40 - co.customerSatisfaction) / 200
+    const declinePct = ((40 - co.customerSatisfaction) / 200) * tuning.lowSatisfactionRevenuePenaltyMult
     co.revenue = Math.round(co.revenue * (1 - declinePct) * 100) / 100
     co.ebitda = Math.round(co.revenue * co.ebitdaMargin * 100) / 100
   }
@@ -111,6 +147,7 @@ export function simulateCompanyQuarter(
   // Clamp values
   co.morale = Math.max(0, Math.min(100, Math.round(co.morale)))
   co.customerSatisfaction = Math.max(0, Math.min(100, Math.round(co.customerSatisfaction)))
+  co.communityTrust = clampHumanMetric(co.communityTrust)
   co.fragility = Math.max(0, Math.min(100, Math.round(co.fragility)))
   co.resilience = Math.max(0, Math.min(100, Math.round(co.resilience)))
 
@@ -122,7 +159,7 @@ export function simulateCompanyQuarter(
 }
 
 function applyEffect(company: PortfolioCompany, effect: PendingEffect): PortfolioCompany {
-  const co = { ...company }
+  const co = ensureCompanyConsequences(company)
   switch (effect.effectType) {
     case 'morale_drop':
       co.morale -= effect.magnitude
@@ -172,7 +209,7 @@ interface BlowupResult {
 
 function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: number): BlowupResult {
   const blowupType = prng.nextInt(0, 4)
-  const co = { ...company }
+  let co = ensureCompanyConsequences(company)
   const effects: PendingEffect[] = []
   let event: GameEvent
 
@@ -186,7 +223,7 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
         id: `evt-custloss-${co.id}-${currentQuarter}`,
         category: 'Company',
         title: `Customer Loss: ${co.name}`,
-        description: `A major customer at ${co.name} did not renew. Revenue impact: -${(revLoss * 100).toFixed(0)}%.`,
+        description: `${getCustomerLossDescription(co, currentQuarter)} Revenue impact: -${(revLoss * 100).toFixed(0)}%.`,
         quarter: currentQuarter, year: 0, impact: { revenue: -revLoss }, resolved: true,
       }
       break
@@ -196,6 +233,10 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
       const headcountLoss = prng.nextFloat(0.15, 0.25)
       co.employeeCount = Math.round(co.employeeCount * (1 - headcountLoss))
       co.morale -= prng.nextFloat(15, 20)
+      co = applyConsequenceDelta(co, {
+        communityTrustDelta: -prng.nextFloat(5, 9),
+        communityBacklashEvents: 1,
+      })
       effects.push({
         id: `eff-exodus-ebitda-${currentQuarter}-${prng.nextInt(1000, 9999)}`,
         companyId: co.id,
@@ -208,7 +249,7 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
         id: `evt-exodus-${co.id}-${currentQuarter}`,
         category: 'Company',
         title: `Employee Exodus: ${co.name}`,
-        description: `A wave of resignations hit ${co.name}. ${Math.round(headcountLoss * 100)}% of staff departed including key department heads.`,
+        description: `${getEmployeeExodusDescription(co, currentQuarter)} ${Math.round(headcountLoss * 100)}% of staff departed including key department heads.`,
         quarter: currentQuarter, year: 0, impact: { employees: -headcountLoss }, resolved: true,
       }
       break
@@ -216,6 +257,11 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
     case 2: {
       // Quality failure
       co.customerSatisfaction -= prng.nextFloat(20, 30)
+      co = applyConsequenceDelta(co, {
+        communityTrustDelta: -prng.nextFloat(8, 12),
+        qualityIncidents: 1,
+        communityBacklashEvents: 1,
+      })
       effects.push({
         id: `eff-qualfail-${currentQuarter}-${prng.nextInt(1000, 9999)}`,
         companyId: co.id,
@@ -228,7 +274,7 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
         id: `evt-quality-${co.id}-${currentQuarter}`,
         category: 'Company',
         title: `Quality Crisis: ${co.name}`,
-        description: `${co.name} experienced a surge of customer complaints. Online reviews plummeted.`,
+        description: getQualityCrisisDescription(co, currentQuarter),
         quarter: currentQuarter, year: 0, impact: { satisfaction: -25 }, resolved: true,
       }
       break
@@ -237,6 +283,11 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
       // Regulatory action
       const oneTimeCost = prng.nextFloat(2, 5)
       co.ebitda = Math.round((co.ebitda - oneTimeCost) * 100) / 100
+      co = applyConsequenceDelta(co, {
+        communityTrustDelta: -prng.nextFloat(10, 14),
+        regulatoryIncidents: 1,
+        communityBacklashEvents: 1,
+      })
       for (let q = 0; q < 4; q++) {
         effects.push({
           id: `eff-reg-${currentQuarter}-${q}-${prng.nextInt(1000, 9999)}`,
@@ -250,7 +301,7 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
         id: `evt-regulatory-${co.id}-${currentQuarter}`,
         category: 'Company',
         title: `Regulatory Action: ${co.name}`,
-        description: `State regulators opened an investigation into ${co.name}. One-time cost: $${oneTimeCost.toFixed(1)}M plus ongoing compliance costs.`,
+        description: `${getRegulatoryActionDescription(co, currentQuarter)} One-time cost: $${oneTimeCost.toFixed(1)}M plus ongoing compliance costs.`,
         quarter: currentQuarter, year: 0, impact: { ebitda: -oneTimeCost }, resolved: true,
       }
       break
@@ -259,6 +310,9 @@ function generateBlowup(prng: PRNG, company: PortfolioCompany, currentQuarter: n
       // Covenant stress (push toward breach)
       co.ebitda = Math.round(co.ebitda * 0.9 * 100) / 100
       co.ebitdaMargin = co.revenue > 0 ? Math.round(co.ebitda / co.revenue * 1000) / 1000 : co.ebitdaMargin
+      co = applyConsequenceDelta(co, {
+        communityTrustDelta: -prng.nextFloat(2, 4),
+      })
       event = {
         id: `evt-stress-${co.id}-${currentQuarter}`,
         category: 'Company',
