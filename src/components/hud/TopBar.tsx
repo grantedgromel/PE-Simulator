@@ -1,5 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple, formatFundCycle, formatQuarter } from '../../utils/formatters'
+import { MetricIcon, type MetricKey } from '../shared/MetricIcon'
 
 export function TopBar() {
   const { fund, currentFundCycle, currentYear, currentQuarter, totalQuartersElapsed, investmentPeriodEndQuarter, fundEndQuarter } = useGameStore()
@@ -27,18 +28,21 @@ export function TopBar() {
 
       {/* Key metrics */}
       <div className="flex items-center gap-4">
-        <MetricDisplay label="CASH" value={formatCurrency(fund.remainingCapital)} />
-        <MetricDisplay label="DEPLOYED" value={formatCurrency(fund.deployedCapital)} />
+        <MetricDisplay icon="cash" label="CASH" value={formatCurrency(fund.remainingCapital)} />
+        <MetricDisplay icon="deployed" label="DEPLOYED" value={formatCurrency(fund.deployedCapital)} />
         <MetricDisplay
+          icon="moic"
           label="GROSS MOIC"
           value={fund.moic !== null ? formatMultiple(fund.moic) : '—'}
         />
         <MetricDisplay
+          icon="moic"
           label="NET MOIC"
           value={fund.netMoic !== null ? formatMultiple(fund.netMoic) : '—'}
         />
-        <MetricDisplay label="DPI" value={fund.dpi > 0 ? formatMultiple(fund.dpi) : '—'} />
+        <MetricDisplay icon="dpi" label="DPI" value={fund.dpi > 0 ? formatMultiple(fund.dpi) : '—'} />
         <MetricDisplay
+          icon="carry"
           label="CARRY"
           value={fund.gpTotalCarry > 0 ? formatCurrency(fund.gpTotalCarry) : '—'}
         />
@@ -47,11 +51,16 @@ export function TopBar() {
   )
 }
 
-function MetricDisplay({ label, value }: { label: string; value: string }) {
+function MetricDisplay({ icon, label, value }: { icon: MetricKey; label: string; value: string }) {
   return (
-    <div className="text-right">
-      <div className="text-[10px] text-terminal-muted font-mono uppercase">{label}</div>
-      <div className="text-sm font-mono text-terminal-white">{value}</div>
+    <div className="flex items-center gap-2">
+      <span className="text-terminal-muted" aria-hidden="true">
+        <MetricIcon metric={icon} size={14} />
+      </span>
+      <div className="text-right">
+        <div className="text-[10px] text-terminal-muted font-mono uppercase">{label}</div>
+        <div className="text-sm font-mono text-terminal-white">{value}</div>
+      </div>
     </div>
   )
 }

@@ -7,6 +7,8 @@ import {
   getStaffedPortfolioCompanyIds,
 } from '../../engine/turnPressure'
 import { Portrait } from '../shared/Portrait'
+import { SectorIcon } from '../shared/SectorIcon'
+import { MetricIcon, type MetricKey } from '../shared/MetricIcon'
 import type { TeamMember } from '../../types/team'
 
 export function Sidebar() {
@@ -28,19 +30,19 @@ export function Sidebar() {
           Fund Metrics
         </h3>
         <div className="space-y-2">
-          <SidebarMetric label="Committed" value={formatCurrency(fund.committedCapital)} />
-          <SidebarMetric label="Deployed" value={formatCurrency(fund.deployedCapital)} />
-          <SidebarMetric label="Remaining" value={formatCurrency(fund.remainingCapital)} />
+          <SidebarMetric icon="cash" label="Committed" value={formatCurrency(fund.committedCapital)} />
+          <SidebarMetric icon="deployed" label="Deployed" value={formatCurrency(fund.deployedCapital)} />
+          <SidebarMetric icon="cash" label="Remaining" value={formatCurrency(fund.remainingCapital)} />
           <div className="border-t border-terminal-border my-2" />
-          <SidebarMetric label="Net IRR" value={fund.netIRR !== null ? formatPercent(fund.netIRR) : '—'} />
-          <SidebarMetric label="Gross IRR" value={fund.grossIRR !== null ? formatPercent(fund.grossIRR) : '—'} />
-          <SidebarMetric label="MOIC" value={fund.moic !== null ? formatMultiple(fund.moic) : '—'} />
-          <SidebarMetric label="DPI" value={fund.dpi > 0 ? formatMultiple(fund.dpi) : '—'} />
-          <SidebarMetric label="TVPI" value={fund.tvpi > 0 ? formatMultiple(fund.tvpi) : '—'} />
+          <SidebarMetric icon="irr" label="Net IRR" value={fund.netIRR !== null ? formatPercent(fund.netIRR) : '—'} />
+          <SidebarMetric icon="irr" label="Gross IRR" value={fund.grossIRR !== null ? formatPercent(fund.grossIRR) : '—'} />
+          <SidebarMetric icon="moic" label="MOIC" value={fund.moic !== null ? formatMultiple(fund.moic) : '—'} />
+          <SidebarMetric icon="dpi" label="DPI" value={fund.dpi > 0 ? formatMultiple(fund.dpi) : '—'} />
+          <SidebarMetric icon="tvpi" label="TVPI" value={fund.tvpi > 0 ? formatMultiple(fund.tvpi) : '—'} />
           <div className="border-t border-terminal-border my-2" />
-          <SidebarMetric label="Reputation" value={`${fund.reputationScore}/100`} />
-          <SidebarMetric label="LP Trust" value={`${fund.lpTrustScore}/100`} />
-          <SidebarMetric label="Mgmt Fees" value={formatCurrency(fund.managementFeesCollected)} />
+          <SidebarMetric icon="reputation" label="Reputation" value={`${fund.reputationScore}/100`} />
+          <SidebarMetric icon="lp-trust" label="LP Trust" value={`${fund.lpTrustScore}/100`} />
+          <SidebarMetric icon="fees" label="Mgmt Fees" value={formatCurrency(fund.managementFeesCollected)} />
         </div>
       </div>
 
@@ -94,11 +96,25 @@ export function Sidebar() {
             {portfolioCompanies.map((co) => (
               <div
                 key={co.id}
-                className="text-xs p-2 bg-terminal-bg rounded border border-terminal-border"
+                className="text-xs p-2 bg-terminal-bg rounded border border-terminal-border flex items-start gap-2"
               >
-                <div className="text-terminal-white font-medium truncate">{co.name}</div>
-                <div className="text-terminal-muted mt-0.5">
-                  EBITDA: {formatCurrency(co.ebitda)}
+                <span
+                  className={`mt-0.5 flex-shrink-0 ${
+                    co.status === 'Active'
+                      ? 'text-terminal-green'
+                      : co.status === 'Exited'
+                        ? 'text-terminal-muted'
+                        : 'text-terminal-red'
+                  }`}
+                  title={co.sector}
+                >
+                  <SectorIcon sector={co.sector} size={14} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-terminal-white font-medium truncate">{co.name}</div>
+                  <div className="text-terminal-muted mt-0.5">
+                    EBITDA: {formatCurrency(co.ebitda)}
+                  </div>
                 </div>
               </div>
             ))}
@@ -116,10 +132,21 @@ export function Sidebar() {
   )
 }
 
-function SidebarMetric({ label, value }: { label: string; value: string }) {
+function SidebarMetric({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: string
+  icon?: MetricKey
+}) {
   return (
     <div className="flex justify-between items-center text-xs">
-      <span className="text-terminal-muted">{label}</span>
+      <span className="text-terminal-muted flex items-center gap-1.5">
+        {icon ? <MetricIcon metric={icon} size={11} /> : null}
+        {label}
+      </span>
       <span className="font-mono text-terminal-white">{value}</span>
     </div>
   )

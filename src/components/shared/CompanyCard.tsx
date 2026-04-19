@@ -1,6 +1,7 @@
 import type { PortfolioCompany } from '../../types/company'
 import { formatCurrency, formatMultiple, formatPercent } from '../../utils/formatters'
 import { getStakeholderOutcomeScore } from '../../engine/consequenceEngine'
+import { SectorIcon } from './SectorIcon'
 
 interface CompanyCardProps {
   company: PortfolioCompany
@@ -23,12 +24,17 @@ export function CompanyCard({ company }: CompanyCardProps) {
 
   return (
     <div className="bg-terminal-surface border border-terminal-border rounded p-4">
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h3 className="text-terminal-white font-medium text-sm">{company.name}</h3>
-          <p className="text-terminal-muted text-xs">{company.subSector}</p>
+      <div className="flex justify-between items-start mb-2 gap-3">
+        <div className="flex items-start gap-2 min-w-0">
+          <span className="text-terminal-muted mt-0.5 flex-shrink-0" title={company.sector}>
+            <SectorIcon sector={company.sector} size={18} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-terminal-white font-medium text-sm truncate">{company.name}</h3>
+            <p className="text-terminal-muted text-xs">{company.subSector}</p>
+          </div>
         </div>
-        <span className="text-xs font-mono text-terminal-muted">
+        <span className="text-xs font-mono text-terminal-muted whitespace-nowrap">
           {company.quartersHeld}Q held
         </span>
       </div>

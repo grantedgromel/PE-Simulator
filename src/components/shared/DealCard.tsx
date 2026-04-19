@@ -2,6 +2,7 @@ import type { Deal } from '../../types/deal'
 import { useGameStore } from '../../store/gameStore'
 import { formatCurrency, formatMultiple } from '../../utils/formatters'
 import { Portrait } from './Portrait'
+import { SectorIcon } from './SectorIcon'
 
 interface DealCardProps {
   deal: Deal
@@ -51,9 +52,14 @@ export function DealCard({ deal, canPursue }: DealCardProps) {
             <p className="text-terminal-muted text-xs mt-0.5">{deal.subSector}</p>
           </div>
         </div>
-        <span className={`text-[10px] font-mono whitespace-nowrap ${sourceLabel.color}`}>
-          {sourceLabel.text}
-        </span>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <span className={`text-terminal-muted ${sourceLabel.color}`} title={deal.sector}>
+            <SectorIcon sector={deal.sector} size={16} />
+          </span>
+          <span className={`text-[10px] font-mono ${sourceLabel.color}`}>
+            {sourceLabel.text}
+          </span>
+        </div>
       </div>
 
       <div className="mb-3 grid grid-cols-3 gap-2">
