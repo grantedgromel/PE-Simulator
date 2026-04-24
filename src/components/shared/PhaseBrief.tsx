@@ -16,37 +16,28 @@ export function PhaseBrief({
   playerGoal,
 }: PhaseBriefProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-terminal-border bg-terminal-surface/85 p-4">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-90"
-        style={{
-          backgroundImage: [
-            'radial-gradient(circle at top right, rgba(0, 255, 136, 0.14), transparent 34%)',
-            'radial-gradient(circle at bottom left, rgba(255, 183, 0, 0.1), transparent 38%)',
-          ].join(', '),
-        }}
-      />
+    <div className="pe-panel" style={{ background: 'var(--color-cream)', padding: '20px 22px' }}>
+      <span className="pe-panel-label">{eyebrow}</span>
 
-      <div className="relative space-y-3">
-        <div className="max-w-3xl">
-          <p className="text-[11px] font-mono uppercase tracking-[0.32em] text-terminal-amber">
-            {eyebrow}
-          </p>
-          <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <h2 className="text-xl font-semibold leading-tight text-terminal-white md:text-2xl">
-              {title}
-            </h2>
-            <p className="text-xs font-mono uppercase tracking-[0.18em] text-terminal-muted">
-              {description}
-            </p>
-          </div>
-        </div>
+      <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <h2
+          className="text-2xl font-extrabold leading-tight md:text-3xl"
+          style={{ color: 'var(--color-ink)', letterSpacing: '-0.02em' }}
+        >
+          {title}
+        </h2>
+        <p
+          className="font-mono text-[11px] font-bold uppercase tracking-[0.18em]"
+          style={{ color: 'var(--color-ink)', opacity: 0.6 }}
+        >
+          {description}
+        </p>
+      </div>
 
-        <div className="grid gap-2 md:grid-cols-3">
-          <LensCard label="Finance" accent="text-terminal-green" body={financeLens} />
-          <LensCard label="Satire" accent="text-terminal-amber" body={satireLens} />
-          <LensCard label="Goal" accent="text-terminal-blue" body={playerGoal} />
-        </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <LensCard label="Finance" accent="var(--color-arcade-green)" body={financeLens} />
+        <LensCard label="Satire" accent="var(--color-orange)" body={satireLens} />
+        <LensCard label="Goal" accent="var(--color-pink)" body={playerGoal} />
       </div>
     </div>
   )
@@ -62,15 +53,23 @@ function LensCard({
   body: string
 }) {
   return (
-    <div className="rounded-xl border border-terminal-border bg-terminal-bg/70 px-3 py-2">
-      <div className="flex items-center justify-between gap-3">
-        <p className={`text-[10px] font-mono uppercase tracking-[0.24em] ${accent}`}>
-          {label}
-        </p>
-        <p className="text-xs font-medium text-terminal-white">
-          {body}
-        </p>
-      </div>
+    <div
+      className="rounded-xl px-3 py-2.5"
+      style={{
+        background: 'var(--color-paper)',
+        border: '2px solid var(--color-ink)',
+        boxShadow: '2px 2px 0 var(--color-ink)',
+      }}
+    >
+      <p
+        className="font-mono text-[9.5px] font-bold uppercase tracking-[0.22em]"
+        style={{ color: accent }}
+      >
+        {label}
+      </p>
+      <p className="mt-1 text-[12.5px] font-semibold leading-snug" style={{ color: 'var(--color-ink)' }}>
+        {body}
+      </p>
     </div>
   )
 }

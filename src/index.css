@@ -1,20 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-terminal-bg: #0a0a0f;
-  --color-terminal-surface: #12121a;
-  --color-terminal-border: #1e1e2e;
-  --color-terminal-green: #00ff88;
-  --color-terminal-amber: #ffb700;
-  --color-terminal-red: #ff4444;
-  --color-terminal-white: #e8e8ed;
-  --color-terminal-muted: #6b6b7b;
-  --color-terminal-blue: #4488ff;
-  --color-terminal-surface-hover: #1a1a28;
+  /* Arcade palette — chunky video-game feel inspired by shootyhoops.com */
+  --color-ink: #1A1833;
+  --color-ink2: #2a2750;
+  --color-cream: #F7F1E1;
+  --color-paper: #EFE6CF;
+  --color-orange: #FF7A3C;
+  --color-lime: #C9FF3C;
+  --color-pink: #FF3DA5;
+  --color-arcade-green: #8BE04E;
+
+  /* Legacy terminal-* tokens remapped to arcade palette so the whole app
+     adopts the new look without touching every component. */
+  --color-terminal-bg: #1A1833;
+  --color-terminal-surface: #2a2750;
+  --color-terminal-surface-hover: #353069;
+  --color-terminal-border: #1A1833;
+  --color-terminal-green: #C9FF3C;
+  --color-terminal-amber: #FF7A3C;
+  --color-terminal-red: #FF3DA5;
+  --color-terminal-white: #F7F1E1;
+  --color-terminal-muted: #b8b0a0;
+  --color-terminal-blue: #6cd2fe;
 
   --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -31,23 +43,330 @@ html, body, #root {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-terminal-bg);
-  color: var(--color-terminal-white);
+  background-color: var(--color-ink);
+  color: var(--color-cream);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.005em;
 }
 
-/* Scrollbar styling for dark theme */
+/* Arcade backdrop — radial accent washes + faint dot grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(255, 122, 60, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 100%, rgba(255, 61, 165, 0.14), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(247, 241, 225, 0.04) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  z-index: 0;
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scrollbar — cream on ink */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-terminal-bg);
+  background: var(--color-ink);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-terminal-border);
-  border-radius: 3px;
+  background: var(--color-ink2);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-terminal-muted);
+  background: var(--color-cream);
+}
+
+/* Tabular numerals everywhere we render mono */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ============ ARCADE PRIMITIVES ============ */
+
+/* Universal panel — chunky border + hard offset shadow (paper backdrop) */
+.pe-panel {
+  background: var(--color-cream);
+  border: 3px solid var(--color-ink);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 6px 6px 0 var(--color-ink);
+  color: var(--color-ink);
+  position: relative;
+}
+.pe-panel-dark {
+  background: var(--color-ink2);
+  color: var(--color-cream);
+  border: 3px solid var(--color-ink);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 6px 6px 0 #000;
+  position: relative;
+}
+.pe-panel-label {
+  position: absolute;
+  top: -12px;
+  left: 16px;
+  background: inherit;
+  background-color: var(--color-cream);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  border: 3px solid var(--color-ink);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--color-ink);
+}
+
+/* Bouncy button with hard shadow */
+.pe-bigbtn {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border: 3px solid var(--color-ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--color-ink);
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 12px 18px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+.pe-bigbtn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+.pe-bigbtn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+.pe-bigbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pe-bigbtn-orange { background: var(--color-orange); }
+.pe-bigbtn-lime { background: var(--color-lime); }
+.pe-bigbtn-pink { background: var(--color-pink); color: var(--color-ink); }
+.pe-bigbtn-cream { background: var(--color-cream); }
+
+/* Stat tile — used in HUD and dashboards */
+.pe-stat {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(247, 241, 225, 0.08);
+  border: 1.5px solid rgba(247, 241, 225, 0.18);
+  min-width: 110px;
+}
+.pe-stat-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.65;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+.pe-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+.pe-stat-sub {
+  font-size: 10px;
+  opacity: 0.55;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
+/* Pill tag (for kicker labels) */
+.pe-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border: 2px solid var(--color-ink);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+/* Meter / progress bar */
+.pe-meter {
+  width: 100%;
+  height: 10px;
+  background: rgba(26, 24, 51, 0.18);
+  border: 1.5px solid var(--color-ink);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.pe-meter-fill {
+  height: 100%;
+  background: var(--color-orange);
+  border-right: 1.5px solid var(--color-ink);
+  transition: width 0.3s ease;
+}
+
+/* HUD nav button (cream on ink2) */
+.pe-hud-navbtn {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  font-family: 'JetBrains Mono', monospace;
+  border: 2px solid rgba(247, 241, 225, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--color-cream);
+  background: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  text-transform: uppercase;
+}
+.pe-hud-navbtn:hover {
+  background: rgba(247, 241, 225, 0.08);
+}
+.pe-hud-navbtn.on {
+  background: var(--color-lime);
+  color: var(--color-ink);
+  border-color: var(--color-lime);
+}
+
+/* Filter chip (used in pipelines / phase views) */
+.pe-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 7px 12px;
+  border: 2px solid var(--color-cream);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--color-cream);
+  opacity: 0.6;
+  background: transparent;
+  text-transform: uppercase;
+  transition: opacity 0.15s, background 0.15s;
+}
+.pe-chip:hover {
+  opacity: 1;
+}
+.pe-chip.on {
+  background: var(--color-orange);
+  color: var(--color-ink);
+  border-color: var(--color-orange);
+  opacity: 1;
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+/* Paper card (deals, companies, advisors) */
+.pe-card {
+  background: var(--color-cream);
+  border: 2.5px solid var(--color-ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--color-ink);
+  color: var(--color-ink);
+  padding: 14px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.pe-card-clickable {
+  cursor: pointer;
+}
+.pe-card-clickable:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+.pe-card-selected {
+  box-shadow: 0 0 0 3px var(--color-lime), 3px 3px 0 var(--color-ink);
+}
+
+/* CIM-style ticker tile (initials in a chunky bordered box) */
+.pe-ticker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid var(--color-ink);
+  border-radius: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  flex-shrink: 0;
+}
+
+/* Heat dots (deal pipeline indicator) */
+.pe-heat {
+  display: inline-flex;
+  gap: 3px;
+}
+.pe-heat-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-ink);
+  background: var(--color-cream);
+}
+.pe-heat-dot.on {
+  background: var(--color-pink);
+}
+
+/* Title-screen logo treatment (chunky stroked text with hard shadow) */
+.pe-title-logo-1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(72px, 12vw, 128px);
+  font-weight: 800;
+  color: var(--color-orange);
+  -webkit-text-stroke: 4px var(--color-ink);
+  text-shadow: 8px 8px 0 var(--color-ink);
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+}
+.pe-title-logo-2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(36px, 6vw, 58px);
+  font-weight: 800;
+  color: var(--color-lime);
+  -webkit-text-stroke: 3px var(--color-ink);
+  text-shadow: 5px 5px 0 var(--color-ink);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+/* Bouncy pop animation for the fund name */
+@keyframes pe-pop {
+  0% { transform: scale(0.97); }
+  60% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+.pe-pop {
+  animation: pe-pop 0.25s ease;
+}
+
+/* Blink for press-start hint */
+@keyframes pe-blink {
+  50% { opacity: 0.25; }
+}
+.pe-blink {
+  animation: pe-blink 1.2s steps(2, end) infinite;
 }

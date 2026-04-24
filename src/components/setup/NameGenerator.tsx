@@ -5,23 +5,37 @@ export function NameGenerator() {
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-terminal-muted uppercase tracking-wider">
+      <label
+        className="block font-mono text-[10px] font-bold uppercase tracking-[0.22em]"
+        style={{ color: 'var(--color-ink)', opacity: 0.6 }}
+      >
         Fund Name
       </label>
       <div className="flex gap-2">
-        <input
-          type="text"
-          value={setup.fundName}
-          onChange={(e) => setFundName(e.target.value)}
-          className="flex-1 bg-terminal-surface border border-terminal-border rounded px-4 py-3 text-terminal-white font-mono text-lg focus:outline-none focus:border-terminal-green transition-colors"
-          placeholder="Enter fund name..."
-        />
+        <div
+          className="flex-1 rounded-xl border-[3px] border-dashed pe-pop"
+          style={{
+            borderColor: 'var(--color-ink)',
+            background: 'var(--color-paper)',
+            padding: '14px 18px',
+          }}
+          key={setup.fundName}
+        >
+          <input
+            type="text"
+            value={setup.fundName}
+            onChange={(e) => setFundName(e.target.value)}
+            className="w-full bg-transparent text-2xl font-extrabold outline-none"
+            style={{ color: 'var(--color-ink)', letterSpacing: '-0.01em' }}
+            placeholder="Enter fund name…"
+          />
+        </div>
         <button
           onClick={rerollFundName}
-          className="px-4 py-3 bg-terminal-surface border border-terminal-border rounded text-terminal-amber hover:bg-terminal-surface-hover hover:border-terminal-amber transition-colors font-mono text-sm"
+          className="pe-bigbtn pe-bigbtn-orange font-mono text-sm"
           title="Generate new name"
         >
-          REROLL
+          ⟳ Reroll
         </button>
       </div>
     </div>
