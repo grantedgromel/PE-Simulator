@@ -16,7 +16,6 @@ export function BottomBar() {
 
   const isEndOfQuarter = currentPhase === 'EndOfQuarter'
 
-  // Determine button state based on current phase
   let buttonLabel = 'NEXT PHASE'
   let buttonEnabled = true
   let handleClick = nextPhase
@@ -34,14 +33,8 @@ export function BottomBar() {
     const auctionsResolved = auctionResults.length > 0
 
     if (!auctionsResolved) {
-      buttonLabel = 'RESOLVE AUCTIONS FIRST'
       buttonEnabled = false
-      if (allBidsSubmitted) {
-        // Auctions need resolving — button stays disabled, user must click Resolve in the view
-        buttonLabel = 'RESOLVE AUCTIONS FIRST'
-      } else {
-        buttonLabel = 'SUBMIT ALL BIDS FIRST'
-      }
+      buttonLabel = allBidsSubmitted ? 'RESOLVE AUCTIONS FIRST' : 'SUBMIT ALL BIDS FIRST'
     } else {
       buttonLabel = 'PROCEED TO STRUCTURING'
     }
@@ -54,7 +47,10 @@ export function BottomBar() {
   }
 
   return (
-    <div className="bg-terminal-surface border-t border-terminal-border px-4 py-2 flex items-center justify-between flex-shrink-0">
+    <div
+      className="flex flex-shrink-0 items-center justify-between border-t-[3px] px-6 py-3"
+      style={{ background: 'var(--color-ink2)', borderColor: 'var(--color-ink)' }}
+    >
       {/* Phase indicators */}
       <div className="flex items-center gap-1">
         {PHASES.map((phase) => {
@@ -66,13 +62,19 @@ export function BottomBar() {
           return (
             <div
               key={phase.id}
-              className={`px-3 py-1 rounded text-xs font-mono transition-colors ${
-                isCurrent
-                  ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green'
+              className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]"
+              style={{
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: `2px solid ${isCurrent ? 'var(--color-lime)' : 'transparent'}`,
+                background: isCurrent ? 'var(--color-lime)' : 'transparent',
+                color: isCurrent
+                  ? 'var(--color-ink)'
                   : isPast
-                    ? 'text-terminal-muted border border-transparent'
-                    : 'text-terminal-border border border-transparent'
-              }`}
+                    ? 'rgba(247,241,225,0.55)'
+                    : 'rgba(247,241,225,0.25)',
+                boxShadow: isCurrent ? '2px 2px 0 var(--color-ink)' : undefined,
+              }}
             >
               {phase.label}
             </div>
@@ -80,13 +82,8 @@ export function BottomBar() {
         })}
       </div>
 
-      {/* Action button */}
-      <button
-        onClick={handleClick}
-        disabled={!buttonEnabled}
-        className="px-6 py-2 bg-terminal-green/20 border border-terminal-green text-terminal-green font-mono text-sm rounded hover:bg-terminal-green/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-      >
-        {buttonLabel}
+      <button onClick={handleClick} disabled={!buttonEnabled} className="pe-bigbtn pe-bigbtn-orange text-sm">
+        {buttonLabel} ▶
       </button>
     </div>
   )
