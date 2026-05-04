@@ -1,19 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
-@import "tailwindcss";
-
-@theme {
-  --color-ink: #1A1833;
-  --color-ink2: #2a2750;
-  --color-cream: #F7F1E1;
-  --color-paper: #EFE6CF;
-  --color-orange: #FF7A3C;
-  --color-lime: #C9FF3C;
-  --color-pink: #FF3DA5;
-  --color-arcade-green: #8BE04E;
-
-  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
-}
 
 /* ============ PE Simulator — arcade design system ============ */
 

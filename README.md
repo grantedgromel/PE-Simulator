@@ -26,14 +26,10 @@ The game is on target if all three statements feel true:
 
 ### Experience Pillars
 
-1. Accurate enough to teach.
-   Simplify, but do not lie. The player should come away with a working mental model of sourcing, diligence, bidding, structuring, operations, exits, carry, and LP management.
-2. Funny because it is true.
-   The satire should come from recognizable industry behavior, not generic "rich people bad" jokes.
+1. Accurate enough to teach. Simplify, but do not lie.
+2. Funny because it is true. Satire from recognizable industry behavior.
 3. Human consequences stay on screen.
-   If the player improves a metric by hurting employees, customers, or long-term resilience, the game should make that legible.
 4. The player is an antihero, not a superhero.
-   You are not fixing capitalism. You are navigating incentives inside it.
 
 ## Core Game Loop
 
@@ -46,70 +42,62 @@ The game is on target if all three statements feel true:
 7. Exit through a strategic, sponsor, IPO, continuation, or write-off path.
 8. Translate the quarter into an LP-safe narrative.
 
-## What "Studio-Grade" Means Here
+## Stack
 
-For this project, "studio-grade" does not mean photorealism. It means the game feels authored and complete:
+- React 19 + TypeScript
+- Vite 8
+- DiceBear (open-peeps style) — character portraits
+- Phosphor Icons — business / product icons
+- Plain CSS for the arcade design system (no Tailwind, no UI framework)
 
-- Clear point of view.
-- Distinct visual identity.
-- Strong onboarding and phase framing.
-- Clean information design for dense finance systems.
-- Deep enough simulation to support repeated runs.
-- Enough authored events, dialogue, and consequences that the world feels inhabited.
-- Consistent tone between the spreadsheet layer and the human layer.
+## Project layout
 
-## Production Priorities
-
-### 1. Vertical Slice Quality
-
-- Make the current loop feel polished from menu to quarter close.
-- Improve the onboarding, phase framing, and feedback language.
-- Make every major decision readable in both finance terms and human terms.
-
-### 2. Systems Depth
-
-- Strengthen fund math, debt behavior, and exit logic.
-- Add clearer consequences for customer pain, labor pressure, and reputational blowback.
-- Expand team politics, fundraising, and LP relationship systems.
-
-### 3. Content Density
-
-- More sectors, more company archetypes, more event chains.
-- More dialogue with bankers, lenders, consultants, founders, journalists, LPs, and employees.
-- More post-exit outcomes that track what kind of owner the player became.
-
-### 4. Presentation
-
-- Sharper UI hierarchy and a stronger art direction.
-- Better motion, sound, map feedback, and character presentation.
-- Tutorials and glossaries that teach without breaking tone.
-
-## Current Stack
-
-- React 19
-- TypeScript
-- Vite
-- Zustand
-- Tailwind CSS v4
-- Pixi.js
+```
+src/
+├── App.tsx           # mounts <PEApp />
+├── main.tsx          # React entry
+├── index.css         # arcade design system + global tokens
+└── pe/
+    ├── PEApp.tsx        # title screen → in-game routing
+    ├── data.ts          # deals, team, advisors, portfolio, fund-name generator
+    ├── ui.tsx           # Panel, BigBtn, Stat, Meter, Tag, HeatDots
+    ├── cards.tsx        # PortraitTile, PersonCard, CompanyCard
+    ├── portraits.tsx    # DiceBear open-peeps wrapper
+    ├── portraitData.ts  # per-character portrait tweaks
+    ├── companyArt.tsx   # Phosphor icon wrapper
+    ├── companyIcons.ts  # company art-key → icon map
+    ├── TitleScreen.tsx  # fund name generator + RAISE THE FUND
+    ├── HUD.tsx          # sticky brand / stats / nav
+    ├── Dashboard.tsx    # HQ — portfolio grid, quarter clock, actions, LP sentiment
+    ├── Pipeline.tsx     # DEALS — sector filters, CIM detail
+    ├── Diligence.tsx    # DD — team allocation, advisor toggles, IC confidence
+    ├── Auction.tsx      # BID — sealed-bid console, results
+    ├── CapStack.tsx     # STACK — sources & uses, LBO model, returns
+    ├── CompanyView.tsx  # value-creation levers + human consequences + exits
+    └── Roster.tsx       # filterable card deck (people + portfolio)
+```
 
 ## Development
 
-Install and run:
-
 ```bash
 npm install
-npm run dev
+npm run dev       # http://localhost:5173
 ```
 
 Production build:
 
 ```bash
-npm run build
+npm run build     # tsc -b && vite build
+npm run preview
 ```
 
-## Near-Term Roadmap
+Lint:
 
-- Replace prototype surfaces with authored onboarding and phase briefings.
-- Improve the main menu so it sells the premise immediately.
-- Keep sharpening the PE sim while making the satire more legible in-play, not just in flavor text.
+```bash
+npm run lint
+```
+
+## Credits
+
+- **Open Peeps** by Pablo Stanley — CC0 hand-drawn character art (rendered via DiceBear).
+- **Phosphor Icons** by Tobias Fried — MIT-licensed product icons.
