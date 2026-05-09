@@ -2,6 +2,10 @@
 import type { CSSProperties } from 'react'
 import { ARCHETYPES, type Person, type Deal, type PortfolioCompany } from './data'
 import { HeatDots, Tag, Meter } from './ui'
+import { PersonPortrait } from './portraits'
+import { hasPortrait } from './portraitData'
+import { CompanyIcon } from './companyArt'
+import { hasCompanyIcon } from './companyIcons'
 
 interface TraitRowProps {
   label: string
@@ -33,12 +37,18 @@ interface PortraitTileProps {
   color?: string
   sigil?: string
   size?: number
+  art?: string
 }
 
-export function PortraitTile({ initials, color = '#FF7A3C', sigil, size = 80 }: PortraitTileProps) {
+export function PortraitTile({ initials, color = '#FF7A3C', sigil, size = 80, art }: PortraitTileProps) {
+  const showArt = hasPortrait(art)
   return (
     <div className="pe-portrait" style={{ width: size, height: size, background: color }}>
-      <div className="pe-portrait-glyph" style={{ fontSize: size * 0.44 }}>{initials}</div>
+      {showArt && art ? (
+        <PersonPortrait id={art} bg={color} size={size} />
+      ) : (
+        <div className="pe-portrait-glyph" style={{ fontSize: size * 0.44 }}>{initials}</div>
+      )}
       {sigil && <div className="pe-portrait-sigil">{sigil}</div>}
       <div className="pe-portrait-corner pe-portrait-corner-tl" />
       <div className="pe-portrait-corner pe-portrait-corner-tr" />
@@ -67,7 +77,7 @@ export function PersonCard({ person, variant = 'full', onClick, selected = false
         className={'pe-person-mini ' + (onClick ? 'clickable ' : '') + (selected ? 'selected ' : '')}
         onClick={onClick}
       >
-        <PortraitTile initials={person.initials} color={arch.color} size={32} />
+        <PortraitTile initials={person.initials} color={arch.color} size={32} art={person.art} />
         <div className="pe-person-mini-body">
           <div className="pe-person-mini-name">{person.name}</div>
           <div className="pe-person-mini-role">{arch.label}</div>
@@ -82,7 +92,7 @@ export function PersonCard({ person, variant = 'full', onClick, selected = false
         className={'pe-person-row ' + (onClick ? 'clickable ' : '') + (selected ? 'selected ' : '')}
         onClick={onClick}
       >
-        <PortraitTile initials={person.initials} color={arch.color} sigil={arch.sigil} size={48} />
+        <PortraitTile initials={person.initials} color={arch.color} sigil={arch.sigil} size={48} art={person.art} />
         <div className="pe-person-row-body">
           <div className="pe-person-row-name">{person.name}</div>
           <div className="pe-person-row-title">{person.title}</div>
@@ -119,7 +129,7 @@ export function PersonCard({ person, variant = 'full', onClick, selected = false
       </div>
 
       <div className="pe-person-card-head">
-        <PortraitTile initials={person.initials} color={arch.color} sigil={arch.sigil} size={compact ? 64 : 84} />
+        <PortraitTile initials={person.initials} color={arch.color} sigil={arch.sigil} size={compact ? 64 : 84} art={person.art} />
         <div className="pe-person-card-namebox">
           <div className="pe-person-card-name">{person.name}</div>
           <div className="pe-person-card-title">{person.title}</div>
@@ -178,13 +188,18 @@ export function CompanyCard({ company, variant = 'portfolio', onClick, selected 
   const margin = ebitda && revenue ? (ebitda / revenue) * 100 : null
 
   if (variant === 'row') {
+    const iconAvailable = hasCompanyIcon(company.art)
     return (
       <div
         className={'pe-co-row ' + (onClick ? 'clickable ' : '') + (selected ? 'selected ' : '')}
         onClick={onClick}
       >
         <div className="pe-co-row-swatch" style={{ background: color }}>
-          <div className="pe-co-row-initials">{initials}</div>
+          {iconAvailable ? (
+            <CompanyIcon art={company.art} size={44} />
+          ) : (
+            <div className="pe-co-row-initials">{initials}</div>
+          )}
         </div>
         <div className="pe-co-row-body">
           <div className="pe-co-row-name">{company.name}</div>
@@ -204,7 +219,9 @@ export function CompanyCard({ company, variant = 'portfolio', onClick, selected 
       onClick={onClick}
     >
       <div className="pe-co-card-titlebar">
-        <div className="pe-co-card-ticker" style={{ background: color }}>{ticker}</div>
+        <div className="pe-co-card-ticker" style={{ background: color }}>
+          {hasCompanyIcon(company.art) ? <CompanyIcon art={company.art} size={52} /> : ticker}
+        </div>
         <div className="pe-co-card-title-text">
           <div className="pe-co-card-name">{company.name}</div>
           <div className="pe-co-card-sector">{company.sector}</div>

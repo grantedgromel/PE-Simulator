@@ -1,19 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
-@import "tailwindcss";
-
-@theme {
-  --color-ink: #1A1833;
-  --color-ink2: #2a2750;
-  --color-cream: #F7F1E1;
-  --color-paper: #EFE6CF;
-  --color-orange: #FF7A3C;
-  --color-lime: #C9FF3C;
-  --color-pink: #FF3DA5;
-  --color-arcade-green: #8BE04E;
-
-  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
-}
 
 /* ============ PE Simulator — arcade design system ============ */
 
@@ -1168,6 +1153,24 @@ body {
   background-image:
     repeating-linear-gradient(45deg, rgba(26,24,51,0.06) 0 4px, transparent 4px 8px);
 }
+/* SVG portrait fills the tile fully */
+.pe-portrait-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+.pe-portrait-svg > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Phosphor product icons in CompanyCard ticker tile / row swatch */
+.pe-co-card-ticker > svg,
+.pe-co-row-swatch > svg {
+  display: block;
+}
 .pe-portrait-glyph {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 900;
@@ -1183,11 +1186,12 @@ body {
   font-size: 10px;
   color: var(--ink);
   opacity: 0.7;
-  z-index: 1;
+  z-index: 2;
 }
 .pe-portrait-corner {
   position: absolute; width: 8px; height: 8px;
   border: 2px solid var(--ink);
+  z-index: 2;
 }
 .pe-portrait-corner-tl { top: 2px; left: 2px; border-right: 0; border-bottom: 0; }
 .pe-portrait-corner-tr { top: 2px; right: 2px; border-left: 0; border-bottom: 0; }
